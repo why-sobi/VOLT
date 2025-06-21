@@ -1,0 +1,54 @@
+# Build artifacts
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.ipch
+*.iobj
+*.log
+*.pch
+*.tlog
+
+# Output directories
+x64/
+Debug/
+Release/
+build/
+
+# Visual Studio files
+.vs/
+*.vcxproj.user
+*.VC.db
+*.suo
+*.user
+*.cache
+*.sln.docstates
+
+# CMake (if used later)
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# 3rd party libraries
+libs/
+
+# System and temp files
+*.tmp
+*.bak
+*.swp
+*.swn
+*.swo
+.DS_Store
+Thumbs.db
+
+# JetBrains / VSCode (optional)
+.idea/
+.vscode/
+
+# pictures to be read
+pics/
