@@ -1,29 +1,30 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+
+#include "Pair.hpp" // or whatever your actual path is
 #include "MLP.hpp"
 #include "Layer.hpp"
+
 //#include <opencv2/opencv.hpp>
 
 int main() {
 	// Initialize random seed
     std::srand(time(nullptr));
     
-    // Layer with 3 neurons, each neuron takes 2 inputs
-    Layer test_layer(3, 2);
 
-    // Sample input (e.g. like AND gate)
-    std::vector<float> input = { 1.0f, 0.5f };
+    std::vector<Pair<std::vector<float>, std::vector<float>>> training_data = {
+    { {0.0f, 0.0f}, {0.0f} },
+    { {0.0f, 1.0f}, {1.0f} },
+    { {1.0f, 0.0f}, {1.0f} },
+    { {1.0f, 1.0f}, {0.0f} }
+    };
 
-    // Forward pass through the layer
-    std::vector<float> output = test_layer.forward(input);
-
-    // Print output
-    std::cout << "Layer output: ";
-    for (float val : output) {
-        std::cout << val << " ";
-    }
-    std::cout << std::endl;
+	MultiLayerPerceptron model(2); // Input size is 2 for XOR problem
+	model.addLayer(2, "sigmoid"); // Hidden layer with 2 neurons
+	model.addLayer(1, "sigmoid"); // Output layer with 1 neuron
+    model.train(training_data, 10);
 
     return 0;
 }
