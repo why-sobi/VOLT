@@ -3,7 +3,7 @@
 #include <ctime>
 #include <vector>
 
-#include "Pair.hpp" // or whatever your actual path is
+#include "Pair.hpp" 
 #include "MLP.hpp"
 #include "Layer.hpp"
 
@@ -14,11 +14,12 @@ int main() {
     std::srand(time(nullptr));
     
 
-    std::vector<Pair<std::vector<float>, std::vector<float>>> training_data = {
-    { {0.0f, 0.0f}, {0.0f} },
-    { {0.0f, 1.0f}, {1.0f} },
-    { {1.0f, 0.0f}, {1.0f} },
-    { {1.0f, 1.0f}, {0.0f} }
+    std::vector<Pair<std::vector<float>, std::vector<float>>> training_data = 
+    {
+        { {0.0f, 0.0f}, {0.0f} },
+        { {0.0f, 1.0f}, {1.0f} },
+        { {1.0f, 0.0f}, {1.0f} },
+        { {1.0f, 1.0f}, {0.0f} }
     };
 
 	MultiLayerPerceptron model(2); // Input size is 2 for XOR problem

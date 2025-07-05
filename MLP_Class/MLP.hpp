@@ -6,15 +6,14 @@
 #include <cstdlib>
 #include <cmath>
 #include <stdexcept>
-
 #include <Eigen/Dense>
-
 #include "Layer.hpp"
 #include "Pair.hpp"
 
 class MultiLayerPerceptron {
 private:
 	int input_size;
+	float learning_rate;
 	std::vector<Layer> layers; // Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 public:
 	MultiLayerPerceptron(int input_size) {
@@ -65,6 +64,9 @@ public:
 				std::vector<float> output = forwardPass(sample.first); // Forward pass to get the output
 				float error = 0.0f;
 
+				std::vector<float> propagatingVector(sample.second.size()); // first it stores relevant errors (gradient of E1 wrt activated output) (in this case output - expected output) 
+
+
 				// Calculate error (for simplicity, using mean squared error)
 				if (output.size() != sample.second.size()) {
 					std::cerr << "Output size (" << output.size() << ") does not match expected output size (" << sample.second.size() << ")" << std::endl;
@@ -72,13 +74,15 @@ public:
 				}
 
 				for (size_t i = 0; i < output.size(); ++i) {
-					error += std::pow(output[i] - sample.second[i], 2);
+					propagatingVector[i] = output[i] - sample.second[i]; // storing relevant errors
+					error += std::pow(output[i] - sample.second[i], 2); // i think instead of square multiplying is faster but we'll see
 				}
 
 				error /= 2; // Mean squared error
 
 				std::cout << "Epoch: " << epoch + 1 << ", Sample Error: " << error << std::endl;
-				// Backpropagation logic would go here (not implemented in this example)
+				
+				backPropagation(propagatingVector);
 			}
 		}
 	}
@@ -86,4 +90,16 @@ public:
 		// Prediction logic here
 		std::cout << "Making predictions with the MLP model..." << std::endl;
 	}
+
+	void backPropagation(std::vector<float>& errors) {
+		for (int i = layers.size() - 1; i > -1; i--) {
+			layers[i].backPropagate_Layer(errors, learning_rate);
+		}	
+	}
 };
+
+/*
+		*	at layer layers.size() - 1 there are n neurons
+		*	we'll have a loop of n * errors.size() (middle and inner most it'll be handled in the Layer class)
+		*
+*/

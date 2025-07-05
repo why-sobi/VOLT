@@ -35,5 +35,8 @@
     <ClInclude Include="Pair.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Activation.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

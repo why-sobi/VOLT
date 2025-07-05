@@ -139,6 +139,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Activation.hpp" />
     <ClInclude Include="Layer.hpp" />
     <ClInclude Include="MLP.hpp" />
     <ClInclude Include="Neuron.hpp" />

@@ -7,21 +7,22 @@
 class Neuron {
     std::vector<float> weights;
     float bias;
-	std::string activationFunc;
+	float last_output;
 
 public:
-    Neuron(int num_inputs, std::string actFunc = "") { // function null for now
+    Neuron(int num_inputs) { // function null for now
         weights.resize(num_inputs); // total connection a single neuron will have (from left to right)
 		for (int i = 0; i < num_inputs; ++i) { // need to setup random weights (-1, 1)
 			weights[i] = getRandomFloat(-1.0f, 1.0f); 
         }
 		bias = getRandomFloat(-1.0f, 1.0f); // setup random bias (-1, 1)
+		last_output = 0.0f;
     }
 	~Neuron() {
 		// Destructor implementation (not needed yet since no dynamic allocation)
 	}
 
-    float activate(const std::vector<float>& inputs) {
+    float activate(const std::vector<float>& inputs, std::function<float(float)>& activationFunc) {
 		// net output = inputs * weights + bias (dot product)
 		if (inputs.size() != weights.size()) {
 			std::cerr << "Error: Number of inputs does not match number of weights." << std::endl;
@@ -34,17 +35,24 @@ public:
 		}
 
 		net_out += this->bias; // add bias
-		return sigmoid(net_out); // apply activation function (or actual output)
+		last_output = activationFunc(net_out); // apply activation function (or actual output)
+		return last_output; 
     }
-	
-	
-	float sigmoid(float x) {
-		// Sigmoid activation function
-		return 1.0f / (1.0f + std::exp(-x));
-	}
 
-	float derivativeSigmoid(float x) {
-		// Derivative of the sigmoid function
-		return x * (1.0f - x); // assuming x is the output of the sigmoid function
+	std::vector<float> backPropagate_Neuron(float &error, std::vector<float>& last_inputs, float learning_rate, std::function<float(float)>& derActivationFun) {
+		std::vector<float> propagatedError(weights.size()); // how much each weight contributed to error
+
+		// derivate of activation function remains same for each neuron of same layer but error (handled in layers class) and last_input changes
+		float delta = error * derActivationFun(last_output); // delta tells how much output of the neuron contributed to error
+
+		for (int i = 0; i < weights.size(); i++) {			
+			// updating weight
+			weights[i] -= learning_rate * delta * last_inputs[i];
+			propagatedError[i] = weights[i] * delta;
+		}
+
+		bias -= learning_rate * delta;
+
+		return propagatedError;
 	}
 };
