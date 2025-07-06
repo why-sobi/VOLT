@@ -46,13 +46,19 @@ public:
 		float delta = error * derActivationFun(last_output); // delta tells how much output of the neuron contributed to error
 
 		for (int i = 0; i < weights.size(); i++) {			
+			propagatedError[i] = weights[i] * delta;
 			// updating weight
 			weights[i] -= learning_rate * delta * last_inputs[i];
-			propagatedError[i] = weights[i] * delta;
 		}
 
 		bias -= learning_rate * delta;
 
 		return propagatedError;
 	}
+
+	const std::vector<float>& getWeights() const {
+		return weights;
+	}
+
+	const float& getBias() const { return bias;  }
 };

@@ -23,6 +23,7 @@ std::function<float(float)> setActivationFunction(std::string& funcName) {
 }
 
 std::function<float(float)> setDerActivationFunction(std::string& funcName) {
+
 	auto it = Activation::derivatives.find(funcName);
-	return it != Activation::activations.end() ? it->second : nullptr;
+	return it != Activation::derivatives.end() ? it->second : nullptr;
 }

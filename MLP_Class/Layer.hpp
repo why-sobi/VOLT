@@ -23,7 +23,8 @@ public:
         this->activationFunction = setActivationFunction(actFunc);
         this->derActivationFunction = setDerActivationFunction(actFunc);
 
-        if (!this->activationFunction || this->derActivationFunction) {
+
+        if (!this->activationFunction || !this->derActivationFunction) {
             std::cerr << "Invalid activation function: " << actFunc << std::endl;
             std::exit(EXIT_FAILURE);
         }
@@ -58,4 +59,8 @@ public:
 	size_t getNumNeurons() const {
 		return neurons.size();
 	}
+
+    const std::vector<Neuron>& getNeurons() const {
+        return neurons;
+    }
 };
