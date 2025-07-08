@@ -76,18 +76,17 @@ public:
 
 				for (size_t i = 0; i < output.size(); ++i) {
 					propagatingVector[i] = output[i] - sample.second[i]; // storing relevant errors
-					error += std::pow(output[i] - sample.second[i], 2); // i think instead of square multiplying is faster but we'll see
+					//error += std::pow(output[i] - sample.second[i], 2); // i think instead of square multiplying is faster but we'll see
+					error += (output[i] - sample.second[i]) * (output[i] - sample.second[i]);
 				}
 
 				error /= 2; // Mean squared error
 				epoch_error += error;
-
-				std::cout << "Epoch: " << epoch + 1 << ", Sample Error: " << error << std::endl;
 				
 				backPropagation(propagatingVector);
 			}
 			
-			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << '\n' << "----------------------------------------\n";
+			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
 		}
 	}
 	std::vector<float> predict(std::vector<float>& input) {
