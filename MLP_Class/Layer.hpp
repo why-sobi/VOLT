@@ -8,11 +8,12 @@ class Layer {
 private:
     std::vector<Neuron> neurons;
     std::vector<float> last_input; // makes it easier to access the activated output of last layer (is used for grad(net/w))
+    Activation::ActivationType functionType;
     std::function<float(float)> activationFunction;
     std::function<float(float)> derActivationFunction;
 
 public:
-    Layer(int num_neurons, int num_inputs_per_neuron, std::string actFunc = "") { // function null for now
+    Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { // function null for now
         neurons.reserve(num_neurons);    // no unecessary reallocation 
         
         for (int i = 0; i < num_neurons; ++i) {
@@ -20,14 +21,24 @@ public:
         }
         // neurons.emplace_back(num_inputs_per_neuron); same as neurons.push_back(Neuron(num_inputs_per_neuron));
         // emplace_back takes the int, checks for neuron constructor and calls it using the int (this results in no unnecessary allocation or assignment)
-        this->activationFunction = setActivationFunction(actFunc);
-        this->derActivationFunction = setDerActivationFunction(actFunc);
+        
+        this->functionType = function;
+        this->activationFunction = Activation::getActivation(function);
+        this->derActivationFunction = Activation::getDerivative(function);
 
 
         if (!this->activationFunction || !this->derActivationFunction) {
-            std::cerr << "Invalid activation function: " << actFunc << std::endl;
+            std::cerr << "Invalid activation function: " << Activation::actTypeToString(function) << std::endl;
             std::exit(EXIT_FAILURE);
         }
+    }
+
+    Layer(std::vector<Neuron>& neurons, std::string& activationFunc) {
+        this->neurons = neurons;
+        //Activation::ActivationType func = Activation::stringToActivationType(activationFunc);
+        this->functionType = Activation::stringToActivationType(activationFunc);
+        this->activationFunction = Activation::getActivation(this->functionType);
+        this->derActivationFunction = Activation::getDerivative(this->functionType);
     }
 
     std::vector<float> forward(const std::vector<float>& inputs) {
@@ -56,11 +67,16 @@ public:
     }
         
 
-	size_t getNumNeurons() const {
+	const size_t getNumNeurons() const {
 		return neurons.size();
 	}
 
     const std::vector<Neuron>& getNeurons() const {
         return neurons;
     }
+
+    const std::string getActivationFunc() const {
+        return Activation::actTypeToString(this->functionType);
+    }
+
 };

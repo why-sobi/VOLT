@@ -36,9 +36,11 @@ int main() {
     };
 
     MultiLayerPerceptron model(2, 0.5); // Input size is 2 for XOR problem
-    model.addLayer(2, "tanh"); // Hidden layer with 2 neurons
-    model.addLayer(1, "sigmoid"); // Output layer with 1 neuron
-    model.train(training_data, 3500);
+    model.addLayer(2, Activation::ActivationType::Tanh); // Hidden layer with 2 neurons
+    model.addLayer(1, Activation::ActivationType::Sigmoid); // Output layer with 1 neuron
+    model.train(training_data, 2000);
+
+    model.save("XOR_MODEL");
 
     for (int i = 0; i < training_data.size(); i++) {
         std::cout << training_data[i].first << " => " << step_function(model.predict(training_data[i].first)[0]) << '\n';

@@ -18,6 +18,14 @@ public:
 		bias = getRandomFloat(-1.0f, 1.0f); // setup random bias (-1, 1)
 		last_output = 0.0f;
     }
+
+	Neuron(float bias, std::vector<float>& weights) {
+		this->bias = bias;
+		this->weights = weights;
+
+		last_output = 0.0f;
+	}
+
 	~Neuron() {
 		// Destructor implementation (not needed yet since no dynamic allocation)
 	}

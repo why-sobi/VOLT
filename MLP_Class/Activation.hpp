@@ -76,28 +76,70 @@ namespace Activation {
         return s + x * s * (1 - s);
     }
 
-    // Maps (Optional)
-    const std::unordered_map<std::string, std::function<float(float)>> activations = {
-    {"sigmoid", sigmoid},
-    {"tanh", tanh_act},
-    {"relu", relu},
-    {"leaky_relu", [](float x) { return leaky_relu(x); }},
-    {"linear", linear},
-    {"elu", [](float x) { return elu(x); }},
-    {"softplus", softplus},
-    {"swish", swish},
+    enum class ActivationType : uint8_t {
+        Sigmoid,
+        Tanh,
+        ReLU,
+        LeakyReLU,
+        Linear,
+        ELU,
+        Softplus,
+        Swish,
     };
 
-    const std::unordered_map<std::string, std::function<float(float)>> derivatives = {
-        {"sigmoid", d_sigmoid},
-        {"tanh", d_tanh},
-        {"relu", d_relu},
-        {"leaky_relu", [](float x) { return d_leaky_relu(x); }},
-        {"linear", d_linear},
-        {"elu", [](float x) { return d_elu(x); }},
-        {"softplus", d_softplus},
-        {"swish", d_swish},
-    };
+    inline std::string actTypeToString(ActivationType type) {
+        switch (type) {
+        case ActivationType::Sigmoid:   return "sigmoid";
+        case ActivationType::Tanh:      return "tanh";
+        case ActivationType::ReLU:      return "relu";
+        case ActivationType::LeakyReLU: return "leaky_relu";
+        case ActivationType::Linear:    return "linear";
+        case ActivationType::ELU:       return "elu";
+        case ActivationType::Softplus:  return "softplus";
+        case ActivationType::Swish:     return "swish";
+        }
+        return "unknown";
+    }
 
+    inline ActivationType stringToActivationType(const std::string& name) {
+        if (name == "sigmoid")     return ActivationType::Sigmoid;
+        if (name == "tanh")        return ActivationType::Tanh;
+        if (name == "relu")        return ActivationType::ReLU;
+        if (name == "leaky_relu")  return ActivationType::LeakyReLU;
+        if (name == "linear")      return ActivationType::Linear;
+        if (name == "elu")         return ActivationType::ELU;
+        if (name == "softplus")    return ActivationType::Softplus;
+        if (name == "swish")       return ActivationType::Swish;
+        throw std::invalid_argument("Unknown activation name: " + name);
+    }
+
+
+    inline std::function<float(float)> getActivation(ActivationType type) {
+        switch (type) {
+        case ActivationType::Sigmoid:   return sigmoid;
+        case ActivationType::Tanh:      return tanh_act;
+        case ActivationType::ReLU:      return relu;
+        case ActivationType::LeakyReLU: return [](float x) { return leaky_relu(x); };
+        case ActivationType::Linear:    return linear;
+        case ActivationType::ELU:       return [](float x) { return elu(x); };
+        case ActivationType::Softplus:  return softplus;
+        case ActivationType::Swish:     return swish;
+        }
+        throw std::invalid_argument("Unknown ActivationType");
+    }
+
+    inline std::function<float(float)> getDerivative(ActivationType type) {
+        switch (type) {
+        case ActivationType::Sigmoid:   return d_sigmoid;
+        case ActivationType::Tanh:      return d_tanh;
+        case ActivationType::ReLU:      return d_relu;
+        case ActivationType::LeakyReLU: return [](float x) { return d_leaky_relu(x); };
+        case ActivationType::Linear:    return d_linear;
+        case ActivationType::ELU:       return [](float x) { return d_elu(x); };
+        case ActivationType::Softplus:  return d_softplus;
+        case ActivationType::Swish:     return d_swish;
+        }
+        throw std::invalid_argument("Unknown ActivationType");
+    }
 
 }
