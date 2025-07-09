@@ -24,3 +24,14 @@ std::function<float(float)> setActivationFunction(Activation::ActivationType& fu
 std::function<float(float)> setDerActivationFunction(Activation::ActivationType& function) {
 	return Activation::getDerivative(function);
 }
+
+template <typename T>
+std::ostream& operator << (std::ostream& out, const std::vector<T>& input) {
+	out << '{';
+	for (int i = 0; i < input.size(); i++) {
+		out << input[i];
+		if (i != input.size() - 1) { out << ", "; }
+	}
+	out << '}';
+	return out;
+}

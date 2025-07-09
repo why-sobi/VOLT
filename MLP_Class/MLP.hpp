@@ -17,6 +17,10 @@ private:
 	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 public:
+	MultiLayerPerceptron() {}
+	MultiLayerPerceptron(std::string filename) {
+		this->load(filename); 
+	}
 	MultiLayerPerceptron(int input_size, float learning_rate) {
 		this->input_size = input_size;
 		this->learning_rate = learning_rate;
@@ -114,6 +118,7 @@ public:
 			size_t totalNeurons = layer.getNumNeurons();
 			std::vector<Neuron> neurons = layer.getNeurons();
 
+
 			out.write(reinterpret_cast<const char*>(&length), sizeof(length));									// storing length of actFunc string
 			out.write(reinterpret_cast<const char*>(activationFunc.c_str()), length);							// writing activation func as string
 			out.write(reinterpret_cast<const char*>(&totalNeurons), sizeof(totalNeurons));						// writing total number of neurons
@@ -121,8 +126,11 @@ public:
 			for (const auto& neuron : neurons) {
 				std::vector<float> weights = neuron.getWeights();
 				size_t total_weights = weights.size();
+				float bias = neuron.getBias();
 
-				out.write(reinterpret_cast<const char*>(&neuron.getBias()), sizeof(float));						// writing bias
+				std::cout << bias << ' ' << weights << ' ' << total_weights << '\n';
+
+				out.write(reinterpret_cast<const char*>(&bias), sizeof(bias));						// writing bias
 				out.write(reinterpret_cast<const char*>(&total_weights), sizeof(total_weights));				// writing size of weights vector
 				out.write(reinterpret_cast<const char*>(weights.data()), total_weights * sizeof(float));		// writing activation func as string
 			}
@@ -147,6 +155,7 @@ public:
 		layers.reserve(num_layers);
 
 		for (int i = 0; i < num_layers; i++) {
+
 			size_t len;
 			size_t total_neurons;
 			std::string activation_func;
@@ -158,12 +167,15 @@ public:
 			in.read(buffer.data(), len);
 			activation_func.assign(buffer.data(), len);
 
+
 			// reading the number of neurons per layer
 			in.read(reinterpret_cast<char*>(&total_neurons), sizeof(total_neurons));
 			std::vector<Neuron> neurons;
 			neurons.reserve(total_neurons);
 
+
 			for (int j = 0; j < total_neurons; j++) {
+
 				float bias;
 				size_t total_weights;
 				std::vector<float> weights;
@@ -173,10 +185,11 @@ public:
 				in.read(reinterpret_cast<char*>(&total_weights), sizeof(total_weights));
 				weights.resize(total_weights);
 
-				in.read(reinterpret_cast<char*>(weights.data()), total_weights);
+				in.read(reinterpret_cast<char*>(weights.data()), total_weights * sizeof(float));
 
 				// putting in the neurons vector
 				neurons.emplace_back(bias, weights);
+
 			}
 
 			// putting in the layers vector
