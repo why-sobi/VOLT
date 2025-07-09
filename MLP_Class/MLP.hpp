@@ -128,9 +128,7 @@ public:
 				size_t total_weights = weights.size();
 				float bias = neuron.getBias();
 
-				std::cout << bias << ' ' << weights << ' ' << total_weights << '\n';
-
-				out.write(reinterpret_cast<const char*>(&bias), sizeof(bias));						// writing bias
+				out.write(reinterpret_cast<const char*>(&bias), sizeof(bias));									// writing bias
 				out.write(reinterpret_cast<const char*>(&total_weights), sizeof(total_weights));				// writing size of weights vector
 				out.write(reinterpret_cast<const char*>(weights.data()), total_weights * sizeof(float));		// writing activation func as string
 			}
@@ -148,11 +146,11 @@ public:
 		size_t num_layers;
 		
 		// reading the MLP meta data (input size and learning rate)
-		in.read(reinterpret_cast<char*>(&this->input_size), sizeof(this->input_size));
-		in.read(reinterpret_cast<char*>(&this->learning_rate), sizeof(this->learning_rate));
-		in.read(reinterpret_cast<char*>(&num_layers), sizeof(num_layers));
+		in.read(reinterpret_cast<char*>(&this->input_size), sizeof(this->input_size));							// reading input size
+		in.read(reinterpret_cast<char*>(&this->learning_rate), sizeof(this->learning_rate));					// reading learning rate
+		in.read(reinterpret_cast<char*>(&num_layers), sizeof(num_layers));										// reading number of layers (input layer is not a layer)
 		layers.clear();
-		layers.reserve(num_layers);
+		layers.reserve(num_layers);																				// allocating memory here so no extra reallocation
 
 		for (int i = 0; i < num_layers; i++) {
 
@@ -162,16 +160,16 @@ public:
 			std::vector<char> buffer;
 			
 			// reading the activation function name
-			in.read(reinterpret_cast<char*>(&len), sizeof(len));
-			buffer.resize(len);
-			in.read(buffer.data(), len);
-			activation_func.assign(buffer.data(), len);
+			in.read(reinterpret_cast<char*>(&len), sizeof(len));												// reading activation function string length
+			buffer.resize(len);																					// resizing buffer to adequate length to store function name
+			in.read(buffer.data(), len);																		// reading function name and storing in buffer
+			activation_func.assign(buffer.data(), len);															// storing function name from buffer to a activation_func to the string
 
 
 			// reading the number of neurons per layer
-			in.read(reinterpret_cast<char*>(&total_neurons), sizeof(total_neurons));
+			in.read(reinterpret_cast<char*>(&total_neurons), sizeof(total_neurons));							// reading neurons per layer
 			std::vector<Neuron> neurons;
-			neurons.reserve(total_neurons);
+			neurons.reserve(total_neurons);																		// to avoid unnecessary reallocation
 
 
 			for (int j = 0; j < total_neurons; j++) {
@@ -181,19 +179,19 @@ public:
 				std::vector<float> weights;
 
 				// readings bias, total weights and weights values
-				in.read(reinterpret_cast<char*>(&bias), sizeof(bias));
-				in.read(reinterpret_cast<char*>(&total_weights), sizeof(total_weights));
-				weights.resize(total_weights);
+				in.read(reinterpret_cast<char*>(&bias), sizeof(bias));											// reading bias
+				in.read(reinterpret_cast<char*>(&total_weights), sizeof(total_weights));						// reading number of weights
+				weights.resize(total_weights);																	// pre-req to reading in a vector
 
-				in.read(reinterpret_cast<char*>(weights.data()), total_weights * sizeof(float));
+				in.read(reinterpret_cast<char*>(weights.data()), total_weights * sizeof(float));				// reading actual weights
 
 				// putting in the neurons vector
-				neurons.emplace_back(bias, weights);
+				neurons.emplace_back(bias, weights);															// re-creating the neuron and storing it
 
 			}
 
 			// putting in the layers vector
-			layers.emplace_back(neurons, activation_func);
+			layers.emplace_back(neurons, activation_func);														// re-creating the layer and storing it
 		}
 	}
 };
