@@ -72,9 +72,11 @@ namespace DataUtil {
     // ---------------------------------------------------------------------- functions --------------------------------------------------------
     // -----------------------------------------------------------------------------------------------------------------------------------------
 
-    std::vector<Sample> PreprocessDataset(const std::string& filename,
-        std::vector<std::string> labels,
-        Normalize::Type type = Normalize::Type::None)
+    std::vector<Sample> PreprocessDataset(
+        const std::string& filename,                                                                                    // csv path
+        std::vector<std::string> labels,                                                                                // labels names
+        Normalize::Type defaultType = Normalize::Type::None,                                                            // fallback normalization type
+        const std::unordered_map<std::string, Normalize::Type>& norm_map = {})                                          // {column name : normalization type}
     {
         rapidcsv::Document doc(filename);                                                                               // reading the dataset
         size_t rows = doc.GetRowCount();
@@ -90,14 +92,17 @@ namespace DataUtil {
             labels.begin(), labels.end(),
             std::inserter(features, features.begin()));
 
-        std::vector<Sample> training_dataset;                                     // dataset to return
-        std::unordered_map<std::string, std::vector<float>> raw_dataset;
+        std::vector<Sample> training_dataset;                                                                           // dataset to return
+        std::unordered_map<std::string, std::vector<float>> raw_dataset;                                                // temporary form of dataset (allows faster normalization)
 
         training_dataset.reserve(rows);                                                                                 // allocating in advance so no unnecessary reallocation
 
         for (const std::string& col : relevant_cols) { // {column name : column data}
             raw_dataset[col] = doc.GetColumn<float>(col);
-            Normalize::apply(raw_dataset[col], type);
+            
+            auto it = norm_map.find(col);                                                                               // if column is mentioned in norm_map
+            // if it is use the mentioned norm function else use the fallback function
+            Normalize::apply(raw_dataset[col], it != norm_map.end() ? it->second : defaultType);
         }
 
 

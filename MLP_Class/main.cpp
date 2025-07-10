@@ -33,7 +33,10 @@ int main() {
         std::cout << input.first << " => " << step_function(model.predict(input.first)[0]) << '\n';
     }*/
 
-    std::vector<DataUtil::Sample> dataset = DataUtil::PreprocessDataset("../datasets/ProcessedHousing.csv", {"price"}, DataUtil::Normalize::Type::ZScore);
+    // Reading ProcessedHousing csv, whose labels are {"price"} and applying ZScore normalization {other options are None & MinMax} 
+    std::vector<DataUtil::Sample> dataset = DataUtil::PreprocessDataset("../datasets/ProcessedHousing.csv",
+                                                                        {"price"}, 
+                                                                         DataUtil::Normalize::Type::None); 
 
     for (const DataUtil::Sample& sample : dataset) {
         std::cout << sample.first << " : " << sample.second << '\n';
