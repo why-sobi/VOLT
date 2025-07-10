@@ -8,8 +8,10 @@
 #include <stdexcept>
 #include <fstream>
 //#include <Eigen/Dense>
+
 #include "Layer.hpp"
 #include "Pair.hpp"
+#include "DataUtil.hpp"
 
 class MultiLayerPerceptron {
 private:
@@ -53,7 +55,7 @@ public:
 		return current_input;																					// Return the output of the last layer
 	}
 
-	void train(std::vector<Pair<std::vector<float>, std::vector<float>>> &data, int epochs) { 
+	void train(std::vector<DataUtil::Sample> &data, int epochs) { 
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 		
