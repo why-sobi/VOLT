@@ -41,7 +41,7 @@ public:
 		}
 	}
 
-	std::vector<float> forwardPass(std::vector<float>& input) {
+	std::vector<float> forwardPass(const std::vector<float>& input) {
 		if (input.size() != input_size) {
 			std::cerr << "Input size (" << input.size() << ") does not match the MLP input size (" << this->input_size << ")" << std::endl;
 			std::exit(EXIT_FAILURE);
@@ -55,7 +55,7 @@ public:
 		return current_input;																					// Return the output of the last layer
 	}
 
-	void train(std::vector<DataUtil::Sample> &data, int epochs) { 
+	void train(std::vector<DataUtil::Sample> &data,const int epochs) { 
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 		
@@ -90,7 +90,7 @@ public:
 			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
 		}
 	}
-	std::vector<float> predict(std::vector<float>& input) {
+	std::vector<float> predict(const std::vector<float>& input) {
 		std::cout << "Making predictions with the MLP model..." << std::endl;
 		return forwardPass(input);
 	}
