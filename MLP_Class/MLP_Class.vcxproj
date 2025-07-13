@@ -144,6 +144,7 @@
     <ClInclude Include="MLP.hpp" />
     <ClInclude Include="Neuron.hpp" />
     <ClInclude Include="DataUtil.hpp" />
+    <ClInclude Include="Normalizer.hpp" />
     <ClInclude Include="Pair.hpp" />
     <ClInclude Include="utils.hpp" />
   </ItemGroup>
