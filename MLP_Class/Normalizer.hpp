@@ -45,6 +45,7 @@ float getStdDev(const std::vector<float>& column, float mean) {
 
 
         std::unordered_map<std::string, Stats> stats;
+        std::vector<std::string> featureOrder;
 
         void minmax(const std::string& column_name, std::vector<float>& column) {
             const auto& s = stats[column_name];
@@ -95,6 +96,7 @@ float getStdDev(const std::vector<float>& column, float mean) {
                 float std_dev_val = getStdDev(column, mean_val);
 
                 stats[column_name] = Stats(min_val, max_val, mean_val, std_dev_val, type);
+				featureOrder.push_back(column_name); // maintain order of features
             }
 
             switch (type) {
@@ -165,4 +167,8 @@ float getStdDev(const std::vector<float>& column, float mean) {
         bool hasStats(const std::string& column_name) const {
             return stats.find(column_name) != stats.end();
         }
+
+		const std::vector<std::string> getFeatureOrder() const {
+			return featureOrder;
+		}
     };

@@ -16,19 +16,8 @@ int main() {
     // Initialize random seed
     std::srand(time(nullptr));
 
-	Normalizer normalizer;
-
-    auto dataset = DataUtil::PreprocessDataset(
-        "../datasets/ProcessedHousing.csv",
-        {"price"},
-        normalizer,
-		NormalizeType::MinMax
-    );
-
-	for (const auto& sample : dataset) {
-        std::cout << sample.first << " : " << sample.second << '\n';
-	}
-
+	
+	
 
     return 0;
 }
