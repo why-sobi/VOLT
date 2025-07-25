@@ -25,7 +25,7 @@ int main() {
         NormalizeType::MinMax
     );
 
-    MultiLayerPerceptron mlp(11, 0.05);
+    MultiLayerPerceptron mlp(11, 0.5);
 	mlp.addLayer(10, Activation::ActivationType::Tanh);
 	mlp.addLayer(2, Activation::ActivationType::Sigmoid);
 	

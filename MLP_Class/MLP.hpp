@@ -33,6 +33,26 @@ public:
 		std::cout << "MLP object destroyed." << std::endl;
 	}
 
+	void setLabels(const std::vector<std::string>& labels) {
+		if (labels.size() == 0) {
+			std::cerr << "Labels size cannot be zero!\n";
+			std::exit(EXIT_FAILURE);
+		}
+
+		this->labels = labels;
+		std::sort(this->labels.begin(),this->labels.end());
+	}
+
+	const std::vector<std::string> getLabels() { 
+		if (this->labels.size() == 0) {
+			std::cerr << "No Labels are set!\n";
+			std::exit(EXIT_FAILURE);
+		}
+
+		return this->labels;
+	}
+
+
 	void addLayer(int num_neurons, Activation::ActivationType function) {
 		if (layers.empty()) {																					// since first layer it'll num_of_inputs per neuron will be the input_size
 			layers.emplace_back(num_neurons, input_size, function);
@@ -97,10 +117,6 @@ public:
 			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
 		}
 	}
-	std::vector<float> predict(const std::vector<float>& input) {
-		std::cout << "Making predictions with the MLP model..." << std::endl;
-		return forwardPass(input);
-	}
 
 	void backPropagation(std::vector<float>& errors) {
 		for (int i = layers.size() - 1; i > -1; i--) {
@@ -108,6 +124,43 @@ public:
 		}	
 	}
 
+	std::vector<float> predict(const std::vector<float>& input) {
+		std::cout << "Making predictions with the MLP model..." << std::endl;
+		return forwardPass(input);
+	}
+
+	std::string LabelMaxPredict(const std::vector<float>& prediction) {
+		if (labels.size() == 0) {
+			std::cerr << "No Labels are set!\n";
+			std::exit(EXIT_FAILURE);
+		}
+		if (prediction.size() != labels.size()) {
+			std::cerr << "Prediction size (" << prediction.size() << ") does not match the number of labels (" << labels.size() << ")" << std::endl;
+			std::exit(EXIT_FAILURE);
+		}
+		auto max_it = std::max_element(prediction.begin(), prediction.end());
+		int index = std::distance(prediction.begin(), max_it);
+		return labels[index];
+	}
+
+	std::unordered_map<std::string, float> getLabeledPrediction(const std::vector<float>& prediction) {
+		if (labels.size() == 0) {
+			std::cerr << "No Labels are set!\n";
+			std::exit(EXIT_FAILURE);
+		}
+		if (prediction.size() != labels.size()) {
+			std::cerr << "Prediction size (" << prediction.size() << ") does not match the number of labels (" << labels.size() << ")" << std::endl;
+			std::exit(EXIT_FAILURE);
+		}
+		std::unordered_map<std::string, float> labeled_prediction;
+		for (size_t i = 0; i < labels.size(); ++i) {
+			labeled_prediction[labels[i]] = prediction[i];
+		}
+		return labeled_prediction;
+	}
+
+
+	// Save And Load Function
 	void save(const std::string& filename) const {
 		std::cout << "Saving...\n";
 		
