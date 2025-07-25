@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "MLP.hpp"
+#include "store.hpp"
 
 //#include <opencv2/opencv.hpp>
 
@@ -16,8 +17,23 @@ int main() {
     // Initialize random seed
     std::srand(time(nullptr));
 
+    Normalizer normalizer;
+    std::vector<DataUtil::Sample> training_data = DataUtil::PreprocessDataset(
+    "../datasets/ProcessedHousing.csv",
+        {"price", "area"},
+		normalizer,
+        NormalizeType::MinMax
+    );
+
+    MultiLayerPerceptron mlp(11, 0.05);
+	mlp.addLayer(10, Activation::ActivationType::Tanh);
+	mlp.addLayer(2, Activation::ActivationType::Sigmoid);
 	
-	
+    mlp.train(training_data, 1000);
+
+    //normalizer.test();
+
+    //SaveModel(mlp, normalizer, "abc");
 
     return 0;
 }

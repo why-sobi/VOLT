@@ -18,6 +18,7 @@ private:
 	int input_size;
 	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
+	std::vector<std::string> labels;
 public:
 	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
@@ -26,6 +27,7 @@ public:
 	MultiLayerPerceptron(int input_size, float learning_rate) {
 		this->input_size = input_size;
 		this->learning_rate = learning_rate;
+		this->labels = {};
 	}
 	~MultiLayerPerceptron() {
 		std::cout << "MLP object destroyed." << std::endl;
@@ -58,6 +60,11 @@ public:
 	void train(std::vector<DataUtil::Sample> &data,const int epochs) { 
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
+
+		if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
+			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
+			std::exit(EXIT_FAILURE);
+		}
 		
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			float epoch_error = 0.0f;

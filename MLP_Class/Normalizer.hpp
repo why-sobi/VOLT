@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <numeric>
+#include <fstream>
 
 enum class NormalizeType { None, MinMax, ZScore };
 
@@ -171,4 +172,81 @@ float getStdDev(const std::vector<float>& column, float mean) {
 		const std::vector<std::string> getFeatureOrder() const {
 			return featureOrder;
 		}
+
+		void save(const std::string& filename) const {
+			// Implement saving logic here
+			std::cout << "Saving normalizer stats to " << filename << std::endl;
+
+            std::ofstream out(filename + "_norm.bin", std::ios::binary);
+
+            if (!out) {
+				throw std::runtime_error("Failed to open file for saving normalizer stats.");
+                std::exit(EXIT_FAILURE);
+			}
+
+			size_t feature_count = featureOrder.size();
+
+            out.write(reinterpret_cast<const char*>(&feature_count), sizeof(feature_count));
+			for (const auto& feature : featureOrder) {
+				const auto& s = stats.at(feature);
+                size_t feature_length = feature.length(); 
+				out.write(reinterpret_cast<const char*>(&feature_length), sizeof(feature_length)); // write length of feature name
+                out.write(reinterpret_cast<const char*>(feature.c_str()), feature_length);
+				out.write(reinterpret_cast<const char*>(&s.min), sizeof(s.min));
+				out.write(reinterpret_cast<const char*>(&s.max), sizeof(s.max));
+				out.write(reinterpret_cast<const char*>(&s.mean), sizeof(s.mean));
+				out.write(reinterpret_cast<const char*>(&s.std_dev), sizeof(s.std_dev));
+				out.write(reinterpret_cast<const char*>(&s.type), sizeof(s.type));
+			}
+
+            out.close();
+		}
+
+        void load(const std::string& filename) {
+            std::cout << "Loading normalizer stats from " << filename << std::endl;
+            std::ifstream in(filename + "_norm.bin", std::ios::binary);
+
+            if (!in) {
+                throw std::runtime_error("Failed to open file for loading normalizer stats.");
+                std::exit(EXIT_FAILURE);
+            }
+
+            size_t feature_count;
+            in.read(reinterpret_cast<char*>(&feature_count), sizeof(feature_count));
+            stats.clear();
+            featureOrder.clear();
+
+            for (size_t i = 0; i < feature_count; ++i) {
+                size_t feature_length;
+				std::string feature;
+				std::vector<char> buffer;
+                
+                in.read(reinterpret_cast<char*>(&feature_length), sizeof(feature_length));
+				buffer.resize(feature_length);
+				in.read(buffer.data(), feature_length);
+                feature.assign(buffer.data(), feature_length);
+
+
+                Stats s;
+                in.read(reinterpret_cast<char*>(&s.min), sizeof(s.min));
+                in.read(reinterpret_cast<char*>(&s.max), sizeof(s.max));
+                in.read(reinterpret_cast<char*>(&s.mean), sizeof(s.mean));
+                in.read(reinterpret_cast<char*>(&s.std_dev), sizeof(s.std_dev));
+                int type_int;
+                in.read(reinterpret_cast<char*>(&type_int), sizeof(type_int));
+                s.type = static_cast<NormalizeType>(type_int);
+                stats[feature] = s;
+            }
+
+			in.close();
+        }
+
+        void test() {
+			for (const auto& [feature, s] : stats) {
+				std::cout << "Feature: " << feature << " => "
+					<< "Min: " << s.min << ", Max: " << s.max
+					<< ", Mean: " << s.mean << ", StdDev: " << s.std_dev
+					<< ", Type: " << static_cast<int>(s.type) << "\n";
+			}
+        }
     };
