@@ -172,6 +172,15 @@ public:
 
 		out.write(reinterpret_cast<const char*>(&this->input_size), sizeof(this->input_size));					// writing the input size
 		out.write(reinterpret_cast<const char*>(&this->learning_rate), sizeof(this->learning_rate));			// writing the learning_rate
+
+		size_t num_labels = labels.size();
+		out.write(reinterpret_cast<const char*>(&num_labels), sizeof(num_labels));								// writing the number of labels
+		for (const auto& label : labels) {
+			size_t length = label.length();
+			out.write(reinterpret_cast<const char*>(&length), sizeof(length));									// storing length of label string
+			out.write(reinterpret_cast<const char*>(label.c_str()), length);									// writing label as string
+		}
+
 		out.write(reinterpret_cast<const char*>(&num_layers), sizeof(num_layers));								// writing the number of layers
 
 		for (const auto& layer : layers) {
@@ -205,11 +214,24 @@ public:
 		std::ifstream in(filename + ".bin", std::ios::binary);
 		if (!in) throw std::runtime_error("Cannot open file or it does not exist!");
 
-		size_t num_layers;
+		size_t num_layers, total_labels;
 		
 		// reading the MLP meta data (input size and learning rate)
 		in.read(reinterpret_cast<char*>(&this->input_size), sizeof(this->input_size));							// reading input size
 		in.read(reinterpret_cast<char*>(&this->learning_rate), sizeof(this->learning_rate));					// reading learning rate
+
+		in.read(reinterpret_cast<char*>(&total_labels), sizeof(total_labels));									// reading number of labels	
+		labels.clear();
+		labels.reserve(total_labels);																			// allocating memory here so no extra reallocation
+		for (size_t i = 0; i < total_labels; i++) {
+			size_t len;
+			std::vector<char> buffer;
+			in.read(reinterpret_cast<char*>(&len), sizeof(len));												// reading label string length
+			buffer.resize(len);																					// resizing buffer to adequate length to store label
+			in.read(buffer.data(), len);																		// reading label and storing in buffer
+			labels.emplace_back(buffer.data(), len);															// storing label from buffer to labels vector
+		}
+
 		in.read(reinterpret_cast<char*>(&num_layers), sizeof(num_layers));										// reading number of layers (input layer is not a layer)
 		layers.clear();
 		layers.reserve(num_layers);																				// allocating memory here so no extra reallocation
