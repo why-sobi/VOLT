@@ -5,10 +5,15 @@
 #include <unordered_map>
 #include <functional>
 
+float clip(float x, float lower = -50.0f, float upper = 50.0f) {
+    return std::max(lower, std::min(x, upper));
+}
+
 namespace Activation {
 
     // Activation Functions
     inline float sigmoid(float x) {
+        x = clip(x);
         return 1.0f / (1.0f + std::exp(-x));
     }
 

@@ -47,5 +47,8 @@
     <ClInclude Include="store.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Loss.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

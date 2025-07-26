@@ -142,6 +142,7 @@
   <ItemGroup>
     <ClInclude Include="Activation.hpp" />
     <ClInclude Include="Layer.hpp" />
+    <ClInclude Include="Loss.hpp" />
     <ClInclude Include="MLP.hpp" />
     <ClInclude Include="Neuron.hpp" />
     <ClInclude Include="DataUtil.hpp" />

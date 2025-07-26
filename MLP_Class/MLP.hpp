@@ -12,6 +12,7 @@
 #include "Layer.hpp"
 #include "Pair.hpp"
 #include "DataUtil.hpp"
+#include "Loss.hpp"
 
 class MultiLayerPerceptron {
 private:
@@ -19,14 +20,16 @@ private:
 	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
+	Loss::Type lossType;																						// What loss function to use
 public:
 	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
 		this->load(filename); 
 	}
-	MultiLayerPerceptron(int input_size, float learning_rate) {
+	MultiLayerPerceptron(int input_size, float learning_rate, Loss::Type lossFunctionName) {
 		this->input_size = input_size;
 		this->learning_rate = learning_rate;
+		this->lossType = lossFunctionName;
 		this->labels = {};
 	}
 	~MultiLayerPerceptron() {
@@ -92,10 +95,6 @@ public:
 				// sample.first is the input vector
 				// sample.second is the expected output vector
 				std::vector<float> output = forwardPass(sample.first);											// Forward pass to get the output
-				float error = 0.0f;
-
-				std::vector<float> propagatingVector(sample.second.size());										// first it stores relevant errors (gradient of E1 wrt activated output) (in this case output - expected output) 
-
 
 				// Calculate error (for simplicity, using mean squared error)
 				if (output.size() != sample.second.size()) {
@@ -103,12 +102,8 @@ public:
 					std::exit(EXIT_FAILURE);
 				}
 
-				for (size_t i = 0; i < output.size(); ++i) {
-					propagatingVector[i] = output[i] - sample.second[i];										// storing relevant errors
-					error += (output[i] - sample.second[i]) * (output[i] - sample.second[i]);
-				}
-
-				error /= 2;																						// Mean squared error
+				std::vector<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, sample.second);
+				float error = Loss::CalculateLoss(this->lossType, output, sample.second);
 				epoch_error += error;
 				
 				backPropagation(propagatingVector);
@@ -172,6 +167,7 @@ public:
 
 		out.write(reinterpret_cast<const char*>(&this->input_size), sizeof(this->input_size));					// writing the input size
 		out.write(reinterpret_cast<const char*>(&this->learning_rate), sizeof(this->learning_rate));			// writing the learning_rate
+		out.write(reinterpret_cast<const char*>(&this->lossType), sizeof(this->lossType));						// writing the loss function type
 
 		size_t num_labels = labels.size();
 		out.write(reinterpret_cast<const char*>(&num_labels), sizeof(num_labels));								// writing the number of labels
@@ -219,6 +215,9 @@ public:
 		// reading the MLP meta data (input size and learning rate)
 		in.read(reinterpret_cast<char*>(&this->input_size), sizeof(this->input_size));							// reading input size
 		in.read(reinterpret_cast<char*>(&this->learning_rate), sizeof(this->learning_rate));					// reading learning rate
+		int type;
+		in.read(reinterpret_cast<char*>(&type), sizeof(type));													// reading loss function type
+		this->lossType = static_cast<Loss::Type>(type);															// converting int to Loss::Type enum
 
 		in.read(reinterpret_cast<char*>(&total_labels), sizeof(total_labels));									// reading number of labels	
 		labels.clear();
