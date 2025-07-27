@@ -24,7 +24,7 @@ private:
 public:
 	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
-		this->load(filename); 
+		//this->load(filename); 
 	}
 	MultiLayerPerceptron(int input_size, float learning_rate, Loss::Type lossFunctionName) {
 		this->input_size = input_size;
@@ -72,22 +72,24 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 
-		std::vector<float> current_input = input;																// Initialize current_input with the input vector (will update it in each layer)
+		//std::vector<float> current_input = input;																// Initialize current_input with the input vector (will update it in each layer)
+		Eigen::VectorX<float> current_input = Eigen::VectorX<float>::Map(input.data(), input.size());			// Initialize current_input with the input vector (will update it in each layer)
 		for (auto& layer : layers) {
 			current_input = layer.forward(current_input);														// Forward pass through each layer 
 		}
 
-		return current_input;																					// Return the output of the last layer
+
+		return std::vector<float>(current_input.data(), current_input.data() + current_input.size());																					// Return the output of the last layer
 	}
 
 	void train(std::vector<DataUtil::Sample> &data,const int epochs) { 
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 
-		if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
+		/*if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
-		}
+		}*/
 		
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			float epoch_error = 0.0f;
@@ -114,8 +116,10 @@ public:
 	}
 
 	void backPropagation(std::vector<float>& errors) {
+
+		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
 		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(errors, learning_rate);
+			layers[i].backPropagate_Layer(error_vector, learning_rate);
 		}	
 	}
 
@@ -156,6 +160,7 @@ public:
 
 
 	// Save And Load Function
+	/*
 	void save(const std::string& filename) const {
 		std::cout << "Saving...\n";
 		
@@ -277,4 +282,5 @@ public:
 			layers.emplace_back(neurons, activation_func);														// re-creating the layer and storing it
 		}
 	}
+	*/
 };
