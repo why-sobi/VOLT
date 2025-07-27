@@ -4,6 +4,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include "Activation.hpp"
+#include "utils.hpp"
 
 class Layer {
 private:
@@ -74,16 +75,15 @@ public:
         // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
 		Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_input.size());
 
-        for (int i = 0; i < weights.rows(); i++) {                                          // Iterating over each neuron
-			float delta = errors(i) * derActivationFunction(last_output(i));                // Calculate delta for the neuron
+        // Calculate deltas for each neuron (element-wise multiplication of errors and derivative of activation function) (not same as Matrix multiplication)
+		Eigen::VectorX<float> deltas = errors.cwiseProduct(last_output.unaryExpr(derActivationFunction)); 
 
-            for (int j = 0; j < weights.cols(); j++) {                                      // Iterating over the neuron's weights
-				new_errors(j) += weights(i, j) * delta;                                     // Update the new errors vector
-				weights(i, j) -= learning_rate * delta * last_input(j);                     // Update the weight
-            }
+        new_errors = weights.transpose() * deltas;
 
-			biases(i) -= learning_rate * delta;                                             // Update the bias
-        }
+		weights -= learning_rate * deltas * last_input.transpose();                         // Update weights (outer product of deltas and last_input)
+   
+        biases -= learning_rate * deltas;                                                   // Update the biases
+       
 		errors = new_errors;                                                                // Update the errors vector for the next layer
     }
         
