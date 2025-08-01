@@ -49,7 +49,7 @@ This project is set up using **Visual Studio**. If you’re using the `.sln` fil
 ---
 
 ## 📁 Project Structure
-
+```
 MLP_Class/
 ├── src/ # Source files (Neuron, Layer, Model)
 ├── main.cpp # Entry point
@@ -58,7 +58,7 @@ MLP_Class/
 ├── README.md
 ├── .gitignore
 └── MLP_Class.sln
-
+```
 
 
 ---
