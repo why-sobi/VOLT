@@ -55,9 +55,10 @@ namespace Loss {
 		if (predictions.size() != targets.size()) {
 			throw std::invalid_argument("Predictions and targets must have the same size.");
 		}
+		//std::cout << predictions << " : " << targets << std::endl;
 		float loss = 0.0f;
 		for (size_t i = 0; i < predictions.size(); ++i) {
-			loss -= targets[i] * std::log(predictions[i]);
+			loss -= targets[i] * std::log(predictions[i] + 1e-7);
 		}
 		return loss / predictions.size();
 	}

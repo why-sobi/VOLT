@@ -7,12 +7,10 @@
 #include <cmath>
 #include <stdexcept>
 #include <fstream>
-//#include <Eigen/Dense>
 
 #include "Layer.hpp"
 #include "Pair.hpp"
 #include "DataUtil.hpp"
-#include "Loss.hpp"
 
 class MultiLayerPerceptron {
 private:
@@ -90,7 +88,7 @@ public:
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
 		}*/
-		
+		int breakAfter = 3;
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			float epoch_error = 0.0f;
 			for (auto& sample : data) {
@@ -119,7 +117,7 @@ public:
 
 		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
 		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(error_vector, learning_rate);
+			layers[i].backPropagate_Layer(error_vector, learning_rate, lossType);
 		}	
 	}
 

@@ -10,6 +10,17 @@ float clip(float x, float lower = -50.0f, float upper = 50.0f) {
 }
 
 namespace Activation {
+    enum class ActivationType : uint8_t {
+        Sigmoid,
+        Tanh,
+        ReLU,
+        LeakyReLU,
+        Linear,
+        ELU,
+        Softplus,
+        Swish,
+        Softmax
+    };
 
     // Activation Functions
     inline float sigmoid(float x) {
@@ -45,6 +56,14 @@ namespace Activation {
         return x * sigmoid(x);
     }
 
+    inline Eigen::VectorX<float> softmax(const Eigen::VectorX<float>& input) {
+		float max_val = input.maxCoeff();
+		Eigen::VectorX<float> stabilized = input.array() - max_val; // for numerical stability
+        Eigen::VectorX<float> exp_values = stabilized.array().exp();
+        return exp_values / exp_values.sum();
+    }
+
+    
     // Derivatives
     inline float d_sigmoid(float x) {
         float s = sigmoid(x);
@@ -57,7 +76,7 @@ namespace Activation {
     }
 
     inline float d_relu(float x) {
-        return x > 0 ? 1 : 0;
+        return x > 0.0 ? 1.0f : 0.0f;
     }
 
     inline float d_leaky_relu(float x, float alpha = 0.01f) {
@@ -81,17 +100,23 @@ namespace Activation {
         return s + x * s * (1 - s);
     }
 
-    enum class ActivationType : uint8_t {
-        Sigmoid,
-        Tanh,
-        ReLU,
-        LeakyReLU,
-        Linear,
-        ELU,
-        Softplus,
-        Swish,
-    };
+	inline Eigen::VectorXf d_softmax(const Eigen::VectorXf& input) { // calculation of the jacobian matrix (aka derivative of softmax)
+        size_t size = input.size();
+        Eigen::MatrixXf jacobian(size, size);
 
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                if (i == j) {
+                    jacobian(i, j) = input(i) * (1 - input(i));
+                }
+                else {
+                    jacobian(i, j) = -input(i) * input(j);
+                }
+            }
+        }
+        return jacobian;
+	}
+    
     inline std::string actTypeToString(ActivationType type) {
         switch (type) {
         case ActivationType::Sigmoid:   return "sigmoid";

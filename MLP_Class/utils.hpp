@@ -3,6 +3,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+
+#include <Eigen/Dense>
+
 #include "Activation.hpp"
 
 float getRandomFloat(float min, float max) {
@@ -17,13 +20,91 @@ float getRandomFloat(float min, float max) {
 }
 
 
-std::function<float(float)> setActivationFunction(Activation::ActivationType& function) {
-	return Activation::getActivation(function);
+void Activate(Eigen::VectorX<float>& input, const Activation::ActivationType function) {
+	switch (function) {
+		case Activation::ActivationType::Sigmoid:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::sigmoid(input(i));
+			}
+			break;
+		case Activation::ActivationType::Tanh:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::tanh_act(input(i));
+			}
+			break;
+		case Activation::ActivationType::ReLU:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::relu(input(i));
+			}
+			break;
+		case Activation::ActivationType::LeakyReLU:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::leaky_relu(input(i));
+			}
+			break;
+		case Activation::ActivationType::Linear:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::linear(input(i));
+			}
+			break;
+		case Activation::ActivationType::ELU:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::elu(input(i));
+			}
+			break;
+		case Activation::ActivationType::Softplus:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::softplus(input(i));
+			}
+			break;
+		case Activation::ActivationType::Swish:
+			for (int i = 0; i < input.size(); i++) {
+				input(i) = Activation::swish(input(i));
+			}
+			break;
+		case Activation::ActivationType::Softmax:
+			input = Activation::softmax(input);
+			break;
+		default:
+			std::cerr << "Unknown activation function type." << std::endl;
+			exit(EXIT_FAILURE);
+	}
 }
 
-std::function<float(float)> setDerActivationFunction(Activation::ActivationType& function) {
-	return Activation::getDerivative(function);
-}
+//void DerActivation(Eigen::VectorX<float>& input, const Activation::ActivationType function) {
+//	switch (function) {
+//	case Activation::ActivationType::Sigmoid:
+//		input = input.unaryExpr(Activation::d_sigmoid);
+//		break;
+//	case Activation::ActivationType::Tanh:
+//		input = input.unaryExpr(Activation::d_tanh);
+//		break;
+//	case Activation::ActivationType::ReLU:
+//		input = input.unaryExpr(Activation::d_relu);
+//		break;
+//	case Activation::ActivationType::LeakyReLU:
+//		input = input.unaryExpr(Activation::d_leaky_relu);
+//		break;
+//	case Activation::ActivationType::Linear:
+//		input = input.unaryExpr(Activation::d_linear);
+//		break;
+//	case Activation::ActivationType::ELU:
+//		input = input.unaryExpr(Activation::d_elu);
+//		break;
+//	case Activation::ActivationType::Softplus:
+//		input = input.unaryExpr(Activation::d_softplus);
+//		break;
+//	case Activation::ActivationType::Swish:
+//		input = input.unaryExpr(Activation::d_swish);
+//		break;
+//	case Activation::ActivationType::Softmax:
+//		input = Activation::d_softmax(input);
+//		break;
+//	default:
+//		std::cerr << "Unknown activation function type." << std::endl;
+//		exit(EXIT_FAILURE);
+//	}
+//}
 
 template <typename T>
 std::ostream& operator << (std::ostream& out, const std::vector<T>& input) {
