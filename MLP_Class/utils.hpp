@@ -116,3 +116,11 @@ std::ostream& operator << (std::ostream& out, const std::vector<T>& input) {
 	out << '}';
 	return out;
 }
+
+template <typename T>
+void shuffle(std::vector<T>& arr) { // Using Fischer Yates Algorithm 
+	for (size_t i = arr.size() - 1; i > 0; i--) {
+		int j = rand() % (i + 1); // Generate a random index from 0 to i
+		std::swap(arr[i], arr[j]); // Swap the elements at indices i and j
+	}
+}

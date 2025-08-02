@@ -15,6 +15,7 @@
 class MultiLayerPerceptron {
 private:
 	int input_size;
+	int batch_size;																								// Batch size for training (not used yet)
 	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
@@ -24,15 +25,14 @@ public:
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
-	MultiLayerPerceptron(int input_size, float learning_rate, Loss::Type lossFunctionName) {
+	MultiLayerPerceptron(int input_size, int batch_size, float learning_rate, Loss::Type lossFunctionName) {
 		this->input_size = input_size;
+		this->batch_size = batch_size;
 		this->learning_rate = learning_rate;
 		this->lossType = lossFunctionName;
 		this->labels = {};
 	}
-	~MultiLayerPerceptron() {
-		std::cout << "MLP object destroyed." << std::endl;
-	}
+	~MultiLayerPerceptron() {}
 
 	void setLabels(const std::vector<std::string>& labels) {
 		if (labels.size() == 0) {
@@ -44,16 +44,6 @@ public:
 		std::sort(this->labels.begin(),this->labels.end());
 	}
 
-	const std::vector<std::string> getLabels() { 
-		if (this->labels.size() == 0) {
-			std::cerr << "No Labels are set!\n";
-			std::exit(EXIT_FAILURE);
-		}
-
-		return this->labels;
-	}
-
-
 	void addLayer(int num_neurons, Activation::ActivationType function) {
 		if (layers.empty()) {																					// since first layer it'll num_of_inputs per neuron will be the input_size
 			layers.emplace_back(num_neurons, input_size, function);
@@ -61,6 +51,53 @@ public:
 		else {																									// subsequent layers will have num_of_inputs per neuron equal to the number of neurons in the previous layer
 			int num_inputs_per_neuron = layers[layers.size() - 1].getNumNeurons();								// get number of neurons in the last layer
 			layers.emplace_back(num_neurons, num_inputs_per_neuron, function);
+		}
+	}
+
+	void train(std::vector<DataUtil::Sample>& data, const int epochs) {
+		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
+		// and vector of Pairs for batch processing
+
+		/*if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
+			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
+			std::exit(EXIT_FAILURE);
+		}*/
+		std::vector<int> indexes(data.size());
+		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
+
+		int breakAfter = 3;
+
+		for (int epoch = 0; epoch < epochs; ++epoch) {
+			float epoch_error = 0.0f;
+			shuffle(indexes);																				// shuffling indexes before each epoch
+
+			// Shuffle the data for each epoch
+			for (const int&i : indexes) {
+				auto& [features, labels] = data[i];															// Get the features and labels for the current sample
+				std::vector<float> output = forwardPass(features);											// Forward pass to get the output
+
+				// Calculate error (for simplicity, using mean squared error)
+				if (output.size() != labels.size()) {
+					std::cerr << "Output size (" << output.size() << ") does not match expected output size (" << labels.size() << ")" << std::endl;
+					std::exit(EXIT_FAILURE);
+				}
+
+				std::vector<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, labels);
+				float error = Loss::CalculateLoss(this->lossType, output, labels);
+				epoch_error += error;
+
+				backPropagation(propagatingVector);
+			}
+
+			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
+		}
+	}
+
+	void backPropagation(std::vector<float>& errors) {
+
+		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
+		for (int i = layers.size() - 1; i > -1; i--) {
+			layers[i].backPropagate_Layer(error_vector, learning_rate, lossType);
 		}
 	}
 
@@ -78,47 +115,6 @@ public:
 
 
 		return std::vector<float>(current_input.data(), current_input.data() + current_input.size());																					// Return the output of the last layer
-	}
-
-	void train(std::vector<DataUtil::Sample> &data,const int epochs) { 
-		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
-		// and vector of Pairs for batch processing
-
-		/*if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
-			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
-			std::exit(EXIT_FAILURE);
-		}*/
-		int breakAfter = 3;
-		for (int epoch = 0; epoch < epochs; ++epoch) {
-			float epoch_error = 0.0f;
-			for (auto& sample : data) {
-				// sample.first is the input vector
-				// sample.second is the expected output vector
-				std::vector<float> output = forwardPass(sample.first);											// Forward pass to get the output
-
-				// Calculate error (for simplicity, using mean squared error)
-				if (output.size() != sample.second.size()) {
-					std::cerr << "Output size (" << output.size() << ") does not match expected output size (" << sample.second.size() << ")" << std::endl;
-					std::exit(EXIT_FAILURE);
-				}
-
-				std::vector<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, sample.second);
-				float error = Loss::CalculateLoss(this->lossType, output, sample.second);
-				epoch_error += error;
-				
-				backPropagation(propagatingVector);
-			}
-			
-			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
-		}
-	}
-
-	void backPropagation(std::vector<float>& errors) {
-
-		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
-		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(error_vector, learning_rate, lossType);
-		}	
 	}
 
 	std::vector<float> predict(const std::vector<float>& input) {
@@ -156,6 +152,14 @@ public:
 		return labeled_prediction;
 	}
 
+	const std::vector<std::string> getLabels() {
+		if (this->labels.size() == 0) {
+			std::cerr << "No Labels are set!\n";
+			std::exit(EXIT_FAILURE);
+		}
+
+		return this->labels;
+	}
 
 	// Save And Load Function
 	/*
