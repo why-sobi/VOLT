@@ -10,6 +10,7 @@
 
 #include "MLP.hpp"
 #include "store.hpp"
+//#include "DataUtil.hpp"
 
 //#include <opencv2/opencv.hpp>
 
@@ -19,8 +20,8 @@ int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 const int POINTS_PER_CLASS = 100;
 const int NUM_CLASSES = 3;
 
-std::vector<Pair<std::vector<float>, std::vector<float>>> generateSpiralDataset() {
-    std::vector<Pair<std::vector<float>, std::vector<float>>> dataset;
+std::vector<DataUtil::Sample> generateSpiralDataset() {
+    std::vector<DataUtil::Sample> dataset;
 
     std::srand((unsigned int)std::time(nullptr));
 
@@ -36,7 +37,10 @@ std::vector<Pair<std::vector<float>, std::vector<float>>> generateSpiralDataset(
             std::vector<float> label(NUM_CLASSES, 0.0f);
             label[classIdx] = 1.0f;
 
-            dataset.push_back({ input, label });
+            dataset.emplace_back(
+                Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size()),
+                Eigen::Map<Eigen::VectorX<float>>(label.data(), label.size())
+            );
         }
     }
 

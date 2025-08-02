@@ -100,9 +100,9 @@ namespace Activation {
         return s + x * s * (1 - s);
     }
 
-	inline Eigen::VectorXf d_softmax(const Eigen::VectorXf& input) { // calculation of the jacobian matrix (aka derivative of softmax)
+	inline Eigen::VectorX<float> d_softmax(const Eigen::VectorX<float>& input) { // calculation of the jacobian matrix (aka derivative of softmax)
         size_t size = input.size();
-        Eigen::MatrixXf jacobian(size, size);
+        Eigen::MatrixX<float> jacobian(size, size);
 
         for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {

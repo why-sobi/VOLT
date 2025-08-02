@@ -5,19 +5,20 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <utility>
 #include <unordered_set>
 
 // Defined headers
 #include "Normalizer.hpp"
-#include "Pair.hpp"
 
 // 3rd party
 #include "rapidcsv.h"
+#include <Eigen/Dense>
 
 
 
 namespace DataUtil {
-    using Sample = Pair<std::vector<float>, std::vector<float>>;
+    using Sample = std::pair<Eigen::VectorX<float>, Eigen::VectorX<float>>;
     
     // -----------------------------------------------------------------------------------------------------------------------------------------
     // -------------------------------------------------------------- helper  functions --------------------------------------------------------
@@ -62,7 +63,10 @@ namespace DataUtil {
                 output.push_back(raw_dataset[label][i]);
             }
 
-            training_dataset.emplace_back(input, output);
+            training_dataset.emplace_back(
+                Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size()),
+                Eigen::Map<Eigen::VectorX<float>>(output.data(), output.size())
+            );
         }
 
         return training_dataset;

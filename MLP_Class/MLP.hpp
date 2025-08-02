@@ -58,10 +58,11 @@ public:
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 
-		/*if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
+		if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
-		}*/
+		}
+
 		std::vector<int> indexes(data.size());
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
 
@@ -74,7 +75,7 @@ public:
 			// Shuffle the data for each epoch
 			for (const int&i : indexes) {
 				auto& [features, labels] = data[i];															// Get the features and labels for the current sample
-				std::vector<float> output = forwardPass(features);											// Forward pass to get the output
+				Eigen::VectorX<float> output = forwardPass(features);										// Forward pass to get the output
 
 				// Calculate error (for simplicity, using mean squared error)
 				if (output.size() != labels.size()) {
@@ -82,7 +83,7 @@ public:
 					std::exit(EXIT_FAILURE);
 				}
 
-				std::vector<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, labels);
+				Eigen::VectorX<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, labels);
 				float error = Loss::CalculateLoss(this->lossType, output, labels);
 				epoch_error += error;
 
@@ -93,7 +94,7 @@ public:
 		}
 	}
 
-	void backPropagation(std::vector<float>& errors) {
+	void backPropagation(Eigen::VectorX<float>& errors) {
 
 		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
 		for (int i = layers.size() - 1; i > -1; i--) {
@@ -101,25 +102,24 @@ public:
 		}
 	}
 
-	std::vector<float> forwardPass(const std::vector<float>& input) {
+	Eigen::VectorX<float> forwardPass(const Eigen::VectorX<float>& input) {
 		if (input.size() != input_size) {
 			std::cerr << "Input size (" << input.size() << ") does not match the MLP input size (" << this->input_size << ")" << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 
-		//std::vector<float> current_input = input;																// Initialize current_input with the input vector (will update it in each layer)
-		Eigen::VectorX<float> current_input = Eigen::VectorX<float>::Map(input.data(), input.size());			// Initialize current_input with the input vector (will update it in each layer)
+		Eigen::VectorX<float> current_input = input;															// Initialize current_input with the input vector (will update it in each layer)
 		for (auto& layer : layers) {
 			current_input = layer.forward(current_input);														// Forward pass through each layer 
 		}
 
-
-		return std::vector<float>(current_input.data(), current_input.data() + current_input.size());																					// Return the output of the last layer
+		return current_input;																					// Return the output of the last layer
 	}
 
-	std::vector<float> predict(const std::vector<float>& input) {
+	Eigen::VectorX<float> predict(std::vector<float>& input) {
 		std::cout << "Making predictions with the MLP model..." << std::endl;
-		return forwardPass(input);
+		Eigen::VectorX<float> input_vector = Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size());
+		return forwardPass(input_vector);
 	}
 
 	std::string LabelMaxPredict(const std::vector<float>& prediction) {

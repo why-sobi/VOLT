@@ -52,33 +52,29 @@ public:
 		errors = new_errors;                                                                // Update the errors vector for the next layer
     }
        
-     /*void backPropagate_Layer(Eigen::VectorX<float>& errors, float learning_rate) {
-        // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
-		Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_input.size());
-        for (int i = 0; i < weights.rows(); i++) {                                          // Iterating over each neuron
-			float delta = errors(i) * derActivationFunction(last_output(i));                // Calculate delta for the neuron
-
-            for (int j = 0; j < weights.cols(); j++) {                                      // Iterating over the neuron's weights
-				new_errors(j) += weights(i, j) * delta;                                     // Update the new errors vector
-				weights(i, j) -= learning_rate * delta * last_input(j);                     // Update the weight
-            }
-
-			biases(i) -= learning_rate * delta;                                             // Update the bias
-        }
-		errors = new_errors;                                                                // Update the errors vector for the next layer
-     }
-     */
-
 	const size_t getNumNeurons() const {
 		return weights.rows();
 	}
-    /*
-    const std::vector<Neuron>& getNeurons() const {
-        return neurons;
-    }*/
-
+ 
     const std::string getActivationFunc() const {
         return Activation::actTypeToString(this->functionType);
     }
+
+    /*void backPropagate_Layer(Eigen::VectorX<float>& errors, float learning_rate) {
+       // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
+       Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_input.size());
+       for (int i = 0; i < weights.rows(); i++) {                                          // Iterating over each neuron
+           float delta = errors(i) * derActivationFunction(last_output(i));                // Calculate delta for the neuron
+
+           for (int j = 0; j < weights.cols(); j++) {                                      // Iterating over the neuron's weights
+               new_errors(j) += weights(i, j) * delta;                                     // Update the new errors vector
+               weights(i, j) -= learning_rate * delta * last_input(j);                     // Update the weight
+           }
+
+           biases(i) -= learning_rate * delta;                                             // Update the bias
+       }
+       errors = new_errors;                                                                // Update the errors vector for the next layer
+    }
+    */
 
 };
