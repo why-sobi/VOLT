@@ -14,72 +14,37 @@ namespace Loss {
 		CategoricalCrossEntropy
 	};
 
-	float MeanSquaredError(const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
-		if (predictions.size() != targets.size()) {
-			throw std::invalid_argument("Predictions and targets must have the same size.");
-		}
-		Eigen::VectorX<float> diff = predictions - targets;
-		float loss = diff.squaredNorm(); // sum of squares
-
-		return loss / predictions.size(); // average
+	float MeanSquaredError(const Eigen::MatrixX<float>& predictions, const Eigen::MatrixX<float>& targets) {
+		
+		Eigen::MatrixX<float> diff = predictions - targets;
+		float loss = diff.array().square().sum();																			// Summing the square of each value in the error matrix
+		return loss / (predictions.rows() * predictions.cols());															// averaging over the whole batch 
 	}
 
-	float HingeLoss(const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
-		if (predictions.size() != targets.size()) {
-			throw std::invalid_argument("Predictions and targets must have the same size.");
-		}
-		// Calculate the loss using the hinge loss formula
-		Eigen::VectorXf lossVector = (1 - targets.array() * predictions.array()).cwiseMax(0.0f);							// CWiseMax checks which one is Max element-wise
-
-		// Calculate the mean loss
-		float loss = lossVector.sum() / predictions.size();
-
-		return loss;
+	float HingeLoss(const Eigen::MatrixX<float>& predictions, const Eigen::MatrixX<float>& targets) {
+		Eigen::MatrixXf lossMatrix = (1.0f - targets.array() * predictions.array()).cwiseMax(0.0f);							// CWiseMax checks which one is Max element-wise
+		return lossMatrix.sum() / (predictions.rows() * predictions.cols());												// avg over all elements
 	}
 
-	float BinaryCrossEntropy(const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
-		if (predictions.size() != targets.size()) {
-			throw std::invalid_argument("Predictions and targets must have the same size.");
-		}
-		// Calculate the loss using the binary cross-entropy formula
-		Eigen::VectorXf lossVector = -(targets.array() * predictions.array().log() +
-			(1 - targets.array()) * (1 - predictions.array()).log());
-
-		// To avoid log(0), we clamp the predictions
-		lossVector = lossVector.unaryExpr([](float val) { return std::max(val, 1e-7f); });
-
-		// Calculate the mean loss
-		float loss = lossVector.sum() / predictions.size();
-
-		return loss;
+	float BinaryCrossEntropy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
+		Eigen::MatrixXf clipped = predictions.cwiseMax(1e-7f).cwiseMin(1.0f - 1e-7f);										// to avoid log(0)
+		Eigen::MatrixXf lossMatrix = -(targets.array() * clipped.array().log() +	
+			(1.0f - targets.array()) * (1.0f - clipped.array()).log());														// Main formula
+		return lossMatrix.sum() / (predictions.rows() * predictions.cols());												// averaging
 	}
 
-	//float CategoricalCrossEntropy(const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
-	//	if (predictions.size() != targets.size()) {
-	//		throw std::invalid_argument("Predictions and targets must have the same size.");
-	//	}
-	//	//std::cout << predictions << " : " << targets << std::endl;
-	//	float loss = 0.0f;
-	//	for (size_t i = 0; i < predictions.size(); ++i) {
-	//		loss -= targets[i] * std::log(predictions[i] + 1e-7);
-	//	}
-	//	return loss / predictions.size();
-	//}
-
-	float CategoricalCrossEntropy(const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
-		if (predictions.size() != targets.size()) {
-			throw std::invalid_argument("Predictions and targets must have the same size.");
-		}
-		// Clamp predictions to avoid log(0)
-		Eigen::VectorX<float> clipped = predictions.cwiseMax(1e-7f).cwiseMin(1.0f - 1e-7f);
-		// Compute element-wise: -target * log(prediction)
-		Eigen::VectorX<float> lossVec = -targets.array() * clipped.array().log();
-		// Sum and average
-		float loss = lossVec.mean();
-		return loss; 
+	float CategoricalCrossEntropy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
+		Eigen::MatrixXf clipped = predictions.cwiseMax(1e-7f).cwiseMin(1.0f - 1e-7f);										// to avoid log(0)
+		Eigen::MatrixXf lossMatrix = -targets.array() * clipped.array().log();												// Compute element-wise: -target * log(prediction)
+		return lossMatrix.sum() / predictions.cols();																		// average over batch, not over all outputs
 	}
 
-	float CalculateLoss(Type lossType, const Eigen::VectorX<float>& predictions, const Eigen::VectorX<float>& targets) {
+	float CalculateLoss(const Eigen::MatrixX<float>& predictions, const Eigen::MatrixX<float>& targets, Type lossType) {
+		if (predictions.rows() != targets.rows() || predictions.cols() != targets.cols()) {
+			std::cerr << "Predictions and Targets do not match dimensions!\n";
+			std::exit(EXIT_FAILURE);
+		}
+
 		switch (lossType) {
 			case Type::MSE:
 				return MeanSquaredError(predictions, targets);
@@ -94,46 +59,45 @@ namespace Loss {
 		}
 	}
 
-	static Eigen::VectorX<float> CalculateGradient_MSE(
-		const Eigen::VectorX<float>& prediction,
-		const Eigen::VectorX<float>& target
+	static Eigen::MatrixX<float> CalculateGradient_MSE(
+		const Eigen::MatrixX<float>& prediction,
+		const Eigen::MatrixX<float>& target
 	) {
-		Eigen::VectorX<float> grad = prediction - target;
-		return grad;
+		return prediction - target;
 	}
 
-	static Eigen::VectorX<float> CalculateGradient_Hinge(
-		const Eigen::VectorX<float>& prediction,
-		const Eigen::VectorX<float>& target
+	static Eigen::MatrixX<float> CalculateGradient_Hinge(
+		const Eigen::MatrixX<float>& prediction,
+		const Eigen::MatrixX<float>& target
 	) {
-		// Compute mask: 1 if (1 - y * y_hat) > 0, else 0
-		Eigen::ArrayXf mask = ((1.0f - target.array() * prediction.array()) > 0.0f).cast<float>();
-		// Gradient: -y where mask is 1, else 0
-		Eigen::VectorXf grad = -target.array() * mask;
-		return grad;
+		// Create a mask for where hinge loss is active: (1 - y * y_hat) > 0
+		Eigen::ArrayXXf mask = ((1.0f - target.array() * prediction.array()) > 0.0f).cast<float>();
+
+		// Gradient = -y where mask is active
+		Eigen::ArrayXXf grad = -target.array() * mask;
+
+		return grad.matrix(); // Convert back to MatrixXf
 	}
 
-	static Eigen::VectorX<float> CalculateGradient_BCE(
-		const Eigen::VectorX<float>& prediction,
-		const Eigen::VectorX<float>& target
+	static Eigen::MatrixX<float> CalculateGradient_BCE(
+		const Eigen::MatrixX<float>& prediction,
+		const Eigen::MatrixX<float>& target
 	) {
-		Eigen::VectorX<float> grad = prediction - target;
-		return grad;
+		return prediction - target;
 	}
 
 
-	static Eigen::VectorX<float> CalculateGradient_CCE(
-		const Eigen::VectorX<float>& prediction,
-		const Eigen::VectorX<float>& target
+	static Eigen::MatrixX<float> CalculateGradient_CCE(
+		const Eigen::MatrixX<float>& prediction,
+		const Eigen::MatrixX<float>& target
 	) {
-		Eigen::VectorX<float> grad = prediction - target;
-		return grad;
+		return prediction - target;
 	}
 
-	static Eigen::VectorX<float> CalculateGradient(
-		Type lossType,
-		const Eigen::VectorX<float>& prediction,
-		const Eigen::VectorX<float>& target
+	static Eigen::MatrixX<float> CalculateGradient(
+		const Eigen::MatrixX<float>& prediction,
+		const Eigen::MatrixX<float>& target,
+		Type lossType
 	) {
 		switch (lossType) {
 		case Type::MSE:

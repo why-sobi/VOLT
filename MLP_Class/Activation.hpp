@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <functional>
+#include <Eigen/Dense>
 
 float clip(float x, float lower = -50.0f, float upper = 50.0f) {
     return std::max(lower, std::min(x, upper));
@@ -49,7 +50,8 @@ namespace Activation {
     }
 
     inline float softplus(float x) {
-        return std::log(1 + std::exp(x));
+        x = clip(x);
+        return std::log1p(std::exp(-std::fabs(x))) + std::max(x, 0.0f);
     }
 
     inline float swish(float x) {
@@ -100,7 +102,7 @@ namespace Activation {
         return s + x * s * (1 - s);
     }
 
-	inline Eigen::VectorX<float> d_softmax(const Eigen::VectorX<float>& input) { // calculation of the jacobian matrix (aka derivative of softmax)
+	inline Eigen::MatrixX<float> d_softmax(const Eigen::VectorX<float>& input) { // calculation of the jacobian matrix (aka derivative of softmax)
         size_t size = input.size();
         Eigen::MatrixX<float> jacobian(size, size);
 

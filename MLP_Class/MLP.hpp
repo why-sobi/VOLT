@@ -15,7 +15,6 @@
 class MultiLayerPerceptron {
 private:
 	int input_size;
-	int batch_size;																								// Batch size for training (not used yet)
 	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
@@ -25,9 +24,8 @@ public:
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
-	MultiLayerPerceptron(int input_size, int batch_size, float learning_rate, Loss::Type lossFunctionName) {
+	MultiLayerPerceptron(int input_size, float learning_rate, Loss::Type lossFunctionName) {
 		this->input_size = input_size;
-		this->batch_size = batch_size;
 		this->learning_rate = learning_rate;
 		this->lossType = lossFunctionName;
 		this->labels = {};
@@ -54,7 +52,7 @@ public:
 		}
 	}
 
-	void train(std::vector<DataUtil::Sample>& data, const int epochs) {
+	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 
@@ -66,12 +64,40 @@ public:
 		std::vector<int> indexes(data.size());
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
 
-		int breakAfter = 3;
+		int output_size = layers[layers.size() - 1].getNumNeurons();
+		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();		// Used for calculating gradient and loss
 
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			float epoch_error = 0.0f;
 			shuffle(indexes);																				// shuffling indexes before each epoch
 
+			for (int start = 0; start < data.size(); start += batch_size) {
+				int end = std::min(start + batch_size, int(data.size()));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
+				int current_batch_size = end - start;														// either batch_size or < batch_size
+
+				Eigen::MatrixX<float> batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
+				Eigen::MatrixX<float> batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
+
+				// constructing our matrices
+				for (int b = 0; b < current_batch_size; b++) {
+					const auto& [features, labels] = data[indexes[start + b]];
+					// Each Column will represent a single Sample
+					batched_features.col(b) = features;														
+					batched_labels.col(b) = labels;
+				}
+
+				Eigen::MatrixX<float> batched_output = forwardPass(batched_features);
+
+				if (batched_output.rows() != output_size) {
+					std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
+					std::exit(EXIT_FAILURE);
+				}
+
+				float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
+				Eigen::MatrixX<float> propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, lossType);
+			}
+
+			/*
 			// Shuffle the data for each epoch
 			for (const int&i : indexes) {
 				auto& [features, labels] = data[i];															// Get the features and labels for the current sample
@@ -89,9 +115,26 @@ public:
 
 				backPropagation(propagatingVector);
 			}
+			*/
 
 			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
 		}
+	}
+
+	Eigen::MatrixX<float> forwardPass(const Eigen::MatrixX<float>& input) {
+		if (int(input.rows()) != this->input_size) {
+			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
+			std::exit(EXIT_FAILURE);
+		}
+
+		Eigen::MatrixX<float> current_input = input;
+		for (int i = 0; i < layers.size() - 1; i++) {
+			current_input = layers[i].forward(current_input);
+			layers[i].activate(current_input);
+		}
+
+		current_input = layers[layers.size() - 1].forward(current_input);
+		return current_input;
 	}
 
 	void backPropagation(Eigen::VectorX<float>& errors) {

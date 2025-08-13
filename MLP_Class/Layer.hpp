@@ -10,10 +10,12 @@
 class Layer {
 private:
 	Eigen::MatrixX<float> weights;                                                          // Rows = Number of Neurons, Columns = Number of Inputs per Neuron
-	Eigen::VectorX<float> biases;                                                           // Size = Number of Neurons
-	Eigen::VectorX<float> last_output;                                                      // Stores the last output of the layer
-	Eigen::VectorX<float> last_input;                                                       // Stores the last input to the layer
+    Eigen::MatrixX<float> last_batched_input;                                               // Rows = Number of features, Columns = Numbers of Samples
+    Eigen::MatrixX<float> last_batched_output;
+    
+    Eigen::VectorX<float> biases;                                                           // Size = Number of Neurons
 	Activation::ActivationType functionType;                                                // Type of activation function used in the layer
+
 
 public:
     Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { 
@@ -23,30 +25,40 @@ public:
 		this->functionType = function;                                                       // Need to store this here so that we can serialize the layer later
     }
 
-    Eigen::VectorX<float> forward(const Eigen::VectorX<float>& inputs) {
-		last_input = inputs;                                                                // storing the last inputs at layer level
-        
-        last_output = weights * inputs + biases;                                            // Calculation of forward pass (Ax + b) 
-        
-        Activate(last_output, functionType);
-        return last_output;
+    void activate(Eigen::MatrixX<float>& input) {
+        if (functionType == Activation::ActivationType::Softmax) {                           // special case as softmax is computed over the output vector not output values per neuron
+            for (int nCol = 0; nCol < int(input.cols()); nCol++) {
+                input.col(nCol) = Activation::softmax(input.col(nCol));
+            }
+        }
+        else {
+            input = input.unaryExpr(Activation::getActivation(functionType));
+        }
+    }
+
+
+    Eigen::MatrixX<float> forward(const Eigen::MatrixX<float>& input) {
+        last_batched_input = input;                                                          // For backprop
+        last_batched_output = (weights * input).colwise() + biases;                          // calculation AX+B
+
+        return last_batched_output;
     }
 
     void backPropagate_Layer(Eigen::VectorX<float>& errors, float learning_rate, const Loss::Type lossType) {
         // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
-		Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_input.size());
+		Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_batched_input.size());
         // Calculate deltas for each neuron (element-wise multiplication of errors and derivative of activation function) (not same as Matrix multiplication)
         Eigen::VectorX<float> deltas;
 		
         if (functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) {
             deltas = errors;                                                                // Softmax derivative is handled differently (prediction - labels)
         } else {
-            deltas = errors.cwiseProduct(last_output.unaryExpr(Activation::getDerivative(functionType))); 
+            deltas = errors.cwiseProduct(last_batched_output.unaryExpr(Activation::getDerivative(functionType))); 
 		}
 
         new_errors = weights.transpose() * deltas;
 
-		weights -= learning_rate * deltas * last_input.transpose();                         // Update weights (outer product of deltas and last_input)
+		weights -= learning_rate * deltas * last_batched_input.transpose();                 // Update weights (outer product of deltas and last_input)
         biases -= learning_rate * deltas;                                                   // Update the biases
        
 		errors = new_errors;                                                                // Update the errors vector for the next layer
@@ -56,9 +68,9 @@ public:
 		return weights.rows();
 	}
  
-    const std::string getActivationFunc() const {
-        return Activation::actTypeToString(this->functionType);
-    }
+    const std::string getActivationFunc() const { return Activation::actTypeToString(this->functionType); }
+
+    const Activation::ActivationType getActivationType() const { return functionType; }
 
     /*void backPropagate_Layer(Eigen::VectorX<float>& errors, float learning_rate) {
        // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
