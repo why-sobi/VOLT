@@ -22,6 +22,8 @@ float getRandomFloat(float min, float max) {
 
 void Activate(Eigen::VectorX<float>& input, const Activation::ActivationType function) {
 	switch (function) {
+		case Activation::ActivationType::Linear:
+			break;
 		case Activation::ActivationType::Sigmoid:
 			for (int i = 0; i < input.size(); i++) {
 				input(i) = Activation::sigmoid(input(i));
@@ -40,11 +42,6 @@ void Activate(Eigen::VectorX<float>& input, const Activation::ActivationType fun
 		case Activation::ActivationType::LeakyReLU:
 			for (int i = 0; i < input.size(); i++) {
 				input(i) = Activation::leaky_relu(input(i));
-			}
-			break;
-		case Activation::ActivationType::Linear:
-			for (int i = 0; i < input.size(); i++) {
-				input(i) = Activation::linear(input(i));
 			}
 			break;
 		case Activation::ActivationType::ELU:

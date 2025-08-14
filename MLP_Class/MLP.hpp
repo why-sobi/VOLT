@@ -75,8 +75,8 @@ public:
 				int end = std::min(start + batch_size, int(data.size()));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
 				int current_batch_size = end - start;														// either batch_size or < batch_size
 
-				Eigen::MatrixX<float> batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
-				Eigen::MatrixX<float> batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
+				Eigen::MatrixXf batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
+				Eigen::MatrixXf batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
 
 				// constructing our matrices
 				for (int b = 0; b < current_batch_size; b++) {
@@ -86,7 +86,7 @@ public:
 					batched_labels.col(b) = labels;
 				}
 
-				Eigen::MatrixX<float> batched_output = forwardPass(batched_features);
+				Eigen::MatrixXf batched_output = forwardPass(batched_features);
 
 				if (batched_output.rows() != output_size) {
 					std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
@@ -94,7 +94,11 @@ public:
 				}
 
 				float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
-				Eigen::MatrixX<float> propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, lossType);
+				Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, output_activation, lossType);
+
+				epoch_error += error;
+
+				backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 			}
 
 			/*
@@ -121,27 +125,24 @@ public:
 		}
 	}
 
-	Eigen::MatrixX<float> forwardPass(const Eigen::MatrixX<float>& input) {
+	Eigen::MatrixXf forwardPass(const Eigen::MatrixXf& input) {
 		if (int(input.rows()) != this->input_size) {
 			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
 			std::exit(EXIT_FAILURE);
 		}
 
-		Eigen::MatrixX<float> current_input = input;
-		for (int i = 0; i < layers.size() - 1; i++) {
-			current_input = layers[i].forward(current_input);
-			layers[i].activate(current_input);
+		Eigen::MatrixXf current_input = input;
+		for (auto& layer : layers) {
+			current_input = layer.forward(current_input);
 		}
 
-		current_input = layers[layers.size() - 1].forward(current_input);
 		return current_input;
 	}
 
-	void backPropagation(Eigen::VectorX<float>& errors) {
+	void backPropagation(Eigen::MatrixXf& errors) {
 
-		Eigen::VectorX<float> error_vector = Eigen::VectorX<float>::Map(errors.data(), errors.size()); // Convert errors to Eigen vector
 		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(error_vector, learning_rate, lossType);
+			layers[i].backPropagate_Layer(errors, learning_rate, lossType);
 		}
 	}
 
