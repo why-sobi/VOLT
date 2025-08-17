@@ -55,11 +55,23 @@ public:
 	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
-
+		if (batch_size <= 0) {
+			std::cerr << "Batch size must be greater than 0!\n";
+			std::exit(EXIT_FAILURE);
+		}
+		if (data.size() == 0) {
+			std::cerr << "Training data cannot be empty!\n";
+			std::exit(EXIT_FAILURE);
+		}
+		if (epochs <= 0) {
+			std::cerr << "Number of epochs must be greater than 0!\n";
+			std::exit(EXIT_FAILURE);
+		}
 		if ((labels.size()) && (labels.size() != layers[layers.size() - 1].getNumNeurons())) {
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
 		}
+
 
 		std::vector<int> indexes(data.size());
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
