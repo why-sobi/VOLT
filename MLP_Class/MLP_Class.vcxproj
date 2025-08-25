@@ -143,15 +143,16 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Activation.hpp" />
-    <ClInclude Include="Layer.hpp" />
-    <ClInclude Include="Loss.hpp" />
-    <ClInclude Include="MLP.hpp" />
-    <ClInclude Include="DataUtil.hpp" />
-    <ClInclude Include="Normalizer.hpp" />
-    <ClInclude Include="Pair.hpp" />
-    <ClInclude Include="store.hpp" />
-    <ClInclude Include="utils.hpp" />
+    <ClInclude Include="Data\DataUtil.hpp" />
+    <ClInclude Include="Functions\Activation.hpp" />
+    <ClInclude Include="Functions\Loss.hpp" />
+    <ClInclude Include="Model\Layer.hpp" />
+    <ClInclude Include="Model\MLP.hpp" />
+    <ClInclude Include="Normalizer\Normalizer.hpp" />
+    <ClInclude Include="Optimizers\Optimizer.hpp" />
+    <ClInclude Include="Utility\Pair.hpp" />
+    <ClInclude Include="Utility\store.hpp" />
+    <ClInclude Include="Utility\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,13 +7,13 @@
 #include <cmath>
 #include <utility>
 #include <unordered_set>
+#include <Eigen/Dense>
 
 // Defined headers
-#include "Normalizer.hpp"
+#include "../Normalizer/Normalizer.hpp"
 
 // 3rd party
-#include "rapidcsv.h"
-#include <Eigen/Dense>
+#include "../../libs/rapidcsv/rapidcsv.h"
 
 
 

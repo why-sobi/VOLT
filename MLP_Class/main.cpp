@@ -6,13 +6,11 @@
 #include <algorithm>
 #include <chrono>
 
+
 #include <Eigen/Dense>
 
-#include "MLP.hpp"
-#include "store.hpp"
-//#include "DataUtil.hpp"
-
-//#include <opencv2/opencv.hpp>
+#include "./Model/MLP.hpp"
+//#include "./Utility/store.hpp"
 
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 

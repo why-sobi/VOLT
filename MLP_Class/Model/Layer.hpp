@@ -3,9 +3,10 @@
 #include <iostream>
 #include <vector>
 #include <Eigen/Dense>
-#include "Activation.hpp"
-#include "utils.hpp"
-#include "Loss.hpp"
+
+#include "../Functions/Activation.hpp"
+#include "../Functions/Loss.hpp"
+#include "../Utility/utils.hpp"
 
 class Layer {
 private:

@@ -9,8 +9,8 @@
 #include <fstream>
 
 #include "Layer.hpp"
-#include "Pair.hpp"
-#include "DataUtil.hpp"
+#include "../Utility/Pair.hpp"
+#include "../Data/DataUtil.hpp"
 
 class MultiLayerPerceptron {
 private:
