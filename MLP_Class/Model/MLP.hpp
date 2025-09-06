@@ -15,22 +15,27 @@
 class MultiLayerPerceptron {
 private:
 	int input_size;
-	float learning_rate;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
 	Loss::Type lossType;																						// What loss function to use
+	Optimizer* optimizer;																						// Optimizer type
 public:
 	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
-	MultiLayerPerceptron(int input_size, float learning_rate, Loss::Type lossFunctionName) {
+	MultiLayerPerceptron(int input_size, Loss::Type lossFunctionName, Optimizer* optimizer) {
 		this->input_size = input_size;
-		this->learning_rate = learning_rate;
 		this->lossType = lossFunctionName;
 		this->labels = {};
+		this->optimizer = optimizer;
 	}
-	~MultiLayerPerceptron() {}
+	~MultiLayerPerceptron() {
+		if (optimizer) {
+			delete optimizer;
+		}
+		optimizer = nullptr;
+	}
 
 	void setLabels(const std::vector<std::string>& labels) {
 		if (labels.size() == 0) {
@@ -50,6 +55,9 @@ public:
 			int num_inputs_per_neuron = layers[layers.size() - 1].getNumNeurons();								// get number of neurons in the last layer
 			layers.emplace_back(num_neurons, num_inputs_per_neuron, function);
 		}
+		int id = layers.size() - 1;																				// Setting up the optimizer (if using any other than SGD)
+		optimizer->registerLayer(id, layers.back().getWeights(), layers.back().getBiases());
+
 	}
 
 	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size) {
@@ -154,7 +162,7 @@ public:
 	void backPropagation(Eigen::MatrixXf& errors) {
 
 		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(errors, learning_rate, lossType);
+			layers[i].backPropagate_Layer(errors, lossType, optimizer, i);
 		}
 	}
 
