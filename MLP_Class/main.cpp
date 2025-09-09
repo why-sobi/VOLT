@@ -51,12 +51,11 @@ int main() {
 
 	std::vector<DataUtil::Sample> data = generateSpiralDataset();
 
-	MultiLayerPerceptron mlp(2, Loss::Type::CategoricalCrossEntropy, new RMSprop(0.005)); // Create an MLP with 3 inputs, learning rate of 0.01, and MSE loss function
-	
-    mlp.addLayer(32, Activation::ActivationType::ReLU); // Add a hidden layer with 5 neurons and ReLU activation
-	mlp.addLayer(32, Activation::ActivationType::ReLU); // Add an output layer with 2 neurons and softplus activation
-    
-    mlp.addLayer(3, Activation::ActivationType::Softmax); // Add an output layer with 2 neurons and softplus activation
+	MultiLayerPerceptron mlp(2, Loss::Type::CategoricalCrossEntropy, new RMSprop(0.005)); 
+  
+    mlp.addLayer(32, Activation::ActivationType::ReLU); 
+	mlp.addLayer(32, Activation::ActivationType::ReLU); 
+    mlp.addLayer(3, Activation::ActivationType::Softmax); 
 
 	mlp.train(data, 1000, 32);
 
