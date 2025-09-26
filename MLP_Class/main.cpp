@@ -57,7 +57,7 @@ int main() {
 	mlp.addLayer(32, Activation::ActivationType::ReLU); 
     mlp.addLayer(3, Activation::ActivationType::Softmax); 
 
-	mlp.train(data, 1000, 32);
+	mlp.train(data, 1000, 32, 10);
 
 	auto end = std::chrono::high_resolution_clock::now();
 

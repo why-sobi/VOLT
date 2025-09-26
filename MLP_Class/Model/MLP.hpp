@@ -60,7 +60,7 @@ public:
 
 	}
 
-	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size) {
+	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size, const int patience = 10) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 		if (batch_size <= 0) {
@@ -79,7 +79,15 @@ public:
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
 		}
+		if (patience < 5) {
+			std::cerr << "Patience cannot be less than 5\n";
+			std::exit(EXIT_FAILURE);
+		}
 
+		// early convergence check stuff
+		int stale_loss = 0;
+		float prev_loss = std::numeric_limits<float>::max();
+		float min_delta = 1e-3f;
 
 		std::vector<int> indexes(data.size());
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
@@ -95,8 +103,8 @@ public:
 				int end = std::min(start + batch_size, int(data.size()));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
 				int current_batch_size = end - start;														// either batch_size or < batch_size
 
-				Eigen::MatrixXf batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
-				Eigen::MatrixXf batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
+				Eigen::MatrixXf batched_features(this->input_size, current_batch_size);						// input size is the number of features each sample would have
+				Eigen::MatrixXf batched_labels(output_size, current_batch_size);							// output size would be the number of labels per sample
 
 				// constructing our matrices
 				for (int b = 0; b < current_batch_size; b++) {
@@ -121,26 +129,16 @@ public:
 				backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 			}
 
-			/*
-			// Shuffle the data for each epoch
-			for (const int&i : indexes) {
-				auto& [features, labels] = data[i];															// Get the features and labels for the current sample
-				Eigen::VectorX<float> output = forwardPass(features);										// Forward pass to get the output
-
-				// Calculate error (for simplicity, using mean squared error)
-				if (output.size() != labels.size()) {
-					std::cerr << "Output size (" << output.size() << ") does not match expected output size (" << labels.size() << ")" << std::endl;
-					std::exit(EXIT_FAILURE);
+			if (prev_loss - epoch_error / data.size() <= min_delta) {
+				++stale_loss;
+				if (stale_loss >= patience) { 
+					std::cout << "Early Stopping at epoch: " << epoch + 1 << " since model converged!\n";
+					break;
 				}
-
-				Eigen::VectorX<float> propagatingVector = Loss::CalculateGradient(this->lossType, output, labels);
-				float error = Loss::CalculateLoss(this->lossType, output, labels);
-				epoch_error += error;
-
-				backPropagation(propagatingVector);
+			} else {
+				stale_loss = 0;
 			}
-			*/
-
+			prev_loss = epoch_error / data.size();
 			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
 		}
 	}
