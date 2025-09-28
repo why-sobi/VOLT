@@ -7,6 +7,9 @@
 #include <cmath>
 #include <utility>
 #include <unordered_set>
+#include <tuple>
+#include <random>
+#include <cstdint>
 #include <Eigen/Dense>
 
 // Defined headers
@@ -18,6 +21,8 @@
 
 
 namespace DataUtility {
+    using Sample = std::pair<Eigen::VectorX<float>, Eigen::VectorX<float>>;
+
     template <typename T>
     struct Dataset {
         std::vector<T> data;
@@ -107,9 +112,6 @@ namespace DataUtility {
 
     };
 
-    using Sample = std::pair<Eigen::VectorX<float>, Eigen::VectorX<float>>;
-    
-    
     template <typename T>
     std::pair<Dataset<T>, Labels<T>> readCSV(const std::string& filename, std::vector<std::string> labels, std::vector<std::string> dropFeatures = {}) {
         if (filename.empty()) { 
@@ -177,5 +179,77 @@ namespace DataUtility {
         }
 
         return { dataset, labelsSet };
+    }
+
+
+    template <typename T>
+    std::tuple<Dataset<T>, Labels<T>, Dataset<T>, Labels<T>> stratified_train_test_split
+    (
+        Dataset<T>& dataset,
+        Labels<T>& labels,
+        float split_ratio,
+        std::mt19937& generator,
+        std::uniform_int_distribution<int>& distribution
+    ) {
+        std::cout << distribution(generator) << std::endl;
+
+    }
+
+    template <typename T>
+    std::tuple<Dataset<T>, Labels<T>, Dataset<T>, Labels<T>> unstratified_train_test_split
+    (
+        Dataset<T>& dataset,
+        Labels<T>& labels,
+        float split_ratio,
+        std::mt19937& generator
+    ) {
+		size_t test_size = static_cast<size_t>(dataset.rows * split_ratio);                                                                 // number of samples in test set
+		size_t train_size = dataset.rows - test_size;                                                                                       // number of samples in train set
+
+		Dataset<T> X_train(train_size, dataset.cols), X_test(test_size, dataset.cols);                                                      // train and test datasets
+		Labels<T> y_train(train_size, labels.cols), y_test(test_size, labels.cols);                                                         // train and test labels
+
+		std::vector<size_t> indices(dataset.rows);                                                                                          // indices for shuffling
+		std::iota(indices.begin(), indices.end(), 0);                                                                                       // fill with 0, 1, ..., dataset.rows - 1
+		std::shuffle(indices.begin(), indices.end(), generator);                                                                            // shuffle indices
+
+		// Fill train set
+        for (size_t i = 0; i < train_size; ++i) {
+			size_t idx = indices[i];
+            size_t start_idx = (idx * dataset.cols), end_idx = start_idx + dataset.cols;                                                   // start and end indices for dataset
+            size_t label_start_idx = (idx * labels.cols), label_end_idx = label_start_idx + labels.cols;                                   // start and end indices for labels
+
+			X_train.data.insert(X_train.data.end(), dataset.data.begin() + start_idx, dataset.data.begin() + end_idx);                     // insert features
+			y_train.label_values.insert(y_train.label_values.end(), labels.label_values.begin() + label_start_idx, labels.label_values.begin() + label_end_idx); // insert labels
+        }
+
+		// Fill test set
+        for (size_t i = train_size; i < indices.size(); i++) {
+            size_t idx = indices[i];
+            size_t start_idx = (idx * dataset.cols), end_idx = start_idx + dataset.cols;                                                   // start and end indices for dataset
+            size_t label_start_idx = (idx * labels.cols), label_end_idx = label_start_idx + labels.cols;                                   // start and end indices for labels
+
+			X_test.data.insert(X_test.data.end(), dataset.data.begin() + start_idx, dataset.data.begin() + end_idx);                       // insert features
+			y_test.label_values.insert(y_test.label_values.end(), labels.label_values.begin() + label_start_idx, labels.label_values.begin() + label_end_idx); // insert labels
+        }
+
+		return { X_train, y_train, X_test, y_test };
+    }
+
+	template <typename T>
+    std::tuple<Dataset<T>, Labels<T>, Dataset<T>, Labels<T>> train_test_split
+    (
+        Dataset<T>& dataset, 
+        Labels<T>& labels, 
+        float split_ratio = 0.2, 
+        bool stratfied = false,
+		uint16_t random_seed = 42
+    ) {
+		std::mt19937 generator(random_seed); // Fixed seed for reproducibility
+		std::uniform_int_distribution<int> distribution(0, dataset.rows - 1);
+        /*stratfied
+            ? return stratified_train_test_split(dataset, labels, split_ratio, generator, distribution)
+            : return unstratified_train_test_split(dataset, labels, split_ratio, generator);*/
+		return unstratified_train_test_split(dataset, labels, split_ratio, generator);
     }
 }

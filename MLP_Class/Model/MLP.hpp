@@ -7,7 +7,6 @@
 #include <cmath>
 #include <stdexcept>
 #include <fstream>
-#include <tuple>
 
 #include "Layer.hpp"
 #include "../Utility/Pair.hpp"
