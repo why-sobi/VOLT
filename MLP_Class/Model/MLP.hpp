@@ -7,18 +7,23 @@
 #include <cmath>
 #include <stdexcept>
 #include <fstream>
+#include <tuple>
 
 #include "Layer.hpp"
 #include "../Utility/Pair.hpp"
 #include "../Data/DataUtil.hpp"
+#include "../Normalizer/Normalizer.hpp"
 
 class MultiLayerPerceptron {
 private:
 	int input_size;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
+	
 	Loss::Type lossType;																						// What loss function to use
 	Optimizer* optimizer;																						// Optimizer type
+	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
+
 public:
 	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
@@ -35,6 +40,30 @@ public:
 			delete optimizer;
 		}
 		optimizer = nullptr;
+	}
+
+	void fit_transform(DataUtility::Dataset<float>& dataset, DataUtility::Labels<float>& labels, const NormalizeType normType) {
+		normalizer = Normalizer();																			// reset normalizer
+		// asEigen gives us a Map object which is like a matrix view of the underlying data
+		auto dataset_matrix = dataset.asEigen();
+		auto labels_matrix = labels.asEigen();
+
+		// Normalize each feature/column
+		for (int i = 0; i < dataset.cols; i++) {
+			normalizer.normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+		}
+
+		for (int i = 0; i < labels.cols; i++) {
+			normalizer.normalize("Label " + std::to_string(i), labels_matrix.col(i), normType);
+		}
+	}
+
+	void transform(DataUtility::Dataset<float>& dataset, const NormalizeType normType) {
+		auto dataset_matrix = dataset.asEigen();
+		// Normalize each feature/column
+		for (int i = 0; i < dataset.cols; i++) {
+			normalizer.normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+		}
 	}
 
 	void setLabels(const std::vector<std::string>& labels) {

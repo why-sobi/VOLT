@@ -14,8 +14,13 @@
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
 int main() {
-    auto [X_train, y_train] = DataUtility::readCSV<float>("../datasets/ProcessedHousing.csv", {"price", "area"}, {"bedrooms"});
-    //std::cout << y_train << '\n';
+	MultiLayerPerceptron model;
+    auto [X, y] = DataUtility::readCSV<float>("../datasets/ProcessedHousing.csv", {"price", "area"}, {"bedrooms"});
+	
+    model.fit_transform(X, y, NormalizeType::ZScore);
+    std::cout << y.asEigen() << '\n';
+
+	
 
     // new expected should be
     // model.train(X_train.asEigen(), y_train.asEigen(), 1000, 32, 10);
