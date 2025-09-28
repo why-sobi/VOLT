@@ -3,6 +3,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+#include <string>
+#include <set> // ordered set
 #include <Eigen/Dense>
 
 #include "../Functions/Activation.hpp"
@@ -65,6 +68,18 @@ void Activate(Eigen::VectorX<float>& input, const Activation::ActivationType fun
 			std::cerr << "Unknown activation function type." << std::endl;
 			exit(EXIT_FAILURE);
 	}
+}
+
+template <typename T>
+std::vector<T> set_diff(std::vector<T>& vec1, std::vector<T>& vec2) { // use this if you do simply want set A-B without sorting (maintains order of vec1)
+	std::set<T> set_vec2(vec2.begin(), vec2.end());
+	std::vector<T> result;
+	for (const T& item : vec1) {
+		if (set_vec2.find(item) == set_vec2.end()) {
+			result.push_back(item);
+		}
+	}
+	return result;
 }
 
 //void DerActivation(Eigen::VectorX<float>& input, const Activation::ActivationType function) {

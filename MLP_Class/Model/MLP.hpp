@@ -60,7 +60,7 @@ public:
 
 	}
 
-	void train(std::vector<DataUtil::Sample>& data, const int epochs, const int batch_size, const int patience = 10) {
+	void train(std::vector<DataUtility::Sample>& data, const int epochs, const int batch_size, const int patience = 10) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 		if (batch_size <= 0) {

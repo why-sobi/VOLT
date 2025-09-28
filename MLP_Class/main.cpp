@@ -13,58 +13,20 @@
 
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
-
-const int POINTS_PER_CLASS = 100;
-const int NUM_CLASSES = 3;
-
-std::vector<DataUtil::Sample> generateSpiralDataset() {
-    std::vector<DataUtil::Sample> dataset;
-
-    std::srand((unsigned int)std::time(nullptr));
-
-    for (int classIdx = 0; classIdx < NUM_CLASSES; ++classIdx) {
-        for (int i = 0; i < POINTS_PER_CLASS; ++i) {
-            float r = static_cast<float>(i) / POINTS_PER_CLASS;
-            float theta = classIdx * 4 + 4 * r + ((float)std::rand() / RAND_MAX) * 0.2f;
-
-            float x = r * std::sin(theta);
-            float y = r * std::cos(theta);
-
-            std::vector<float> input = { x, y };
-            std::vector<float> label(NUM_CLASSES, 0.0f);
-            label[classIdx] = 1.0f;
-
-            dataset.emplace_back(
-                Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size()),
-                Eigen::Map<Eigen::VectorX<float>>(label.data(), label.size())
-            );
-        }
-    }
-
-    return dataset;
-}
-
 int main() {
-	auto start = std::chrono::high_resolution_clock::now();
-	// Initialize random seed
-	std::srand(time(nullptr));
+    auto [X_train, y_train] = DataUtility::readCSV<float>("../datasets/ProcessedHousing.csv", {"price", "area"}, {"bedrooms"});
+    //std::cout << y_train << '\n';
 
-	std::vector<DataUtil::Sample> data = generateSpiralDataset();
+    // new expected should be
+    // model.train(X_train.asEigen(), y_train.asEigen(), 1000, 32, 10);
 
-	MultiLayerPerceptron mlp(2, Loss::Type::CategoricalCrossEntropy, new RMSprop(0.005)); 
-  
-    mlp.addLayer(32, Activation::ActivationType::ReLU); 
-	mlp.addLayer(32, Activation::ActivationType::ReLU); 
-    mlp.addLayer(3, Activation::ActivationType::Softmax); 
-
-	mlp.train(data, 1000, 32, 10);
-
-	auto end = std::chrono::high_resolution_clock::now();
-
-	std::chrono::duration<double> elapsed = end - start;
-	std::cout << "Training completed in " << elapsed.count() << " seconds." << std::endl;
-	// Fill the matrix with random values
-
+    // TODO:
+	
+    // Fix normalizer usage (should be inside model class)
+	// Split dataset into train and test (both stratified and random)
+	// Change model.train signature to accept Eigen matrices
+	// Implement validation during training
+    // Make save and load work
 
     return 0;
 }
