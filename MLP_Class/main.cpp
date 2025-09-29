@@ -32,7 +32,7 @@ int main() {
 	
     // Fix normalizer usage (should be inside model class)
 	
-    // Split dataset into train and test (both stratified and random)
+    // Split dataset into train and test (both stratified and random) [testing left]
 	// Change model.train signature to accept Eigen matrices
 	// Implement validation during training
     // Make save and load work

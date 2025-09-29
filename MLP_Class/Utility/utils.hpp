@@ -135,3 +135,12 @@ void shuffle(std::vector<T>& arr) { // Using Fischer Yates Algorithm
 		std::swap(arr[i], arr[j]); // Swap the elements at indices i and j
 	}
 }
+
+template <typename T>
+std::unordered_map<T, size_t> uniqueCount(const std::vector<T>& vec) {
+	std::unordered_map<T, size_t> count;
+	for (const T& val : vec) {
+		count[val]++;
+	}
+	return count;
+}
