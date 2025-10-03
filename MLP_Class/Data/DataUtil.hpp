@@ -169,12 +169,13 @@ namespace DataUtility {
         // if you note slower performance you might consider shifting to RESIZE memory and using [] operator
         
         // Fill data row by row
+        // GetCell expected args (ColIdx, RowIdx)
         for (size_t i = 0; i < rows; i++) {
             for (int j : fIdx)
-                dataset.data.push_back(doc.GetCell<T>(i, j));
+                dataset.data.push_back(doc.GetCell<T>(j, i));
 
             for (int j : lIdx)
-                labelsSet.label_values.push_back(doc.GetCell<T>(i, j));
+                labelsSet.label_values.push_back(doc.GetCell<T>(j, i));
         }
 
         return { dataset, labelsSet };
@@ -377,8 +378,10 @@ namespace DataUtility {
 		uint16_t random_seed = 42
     ) {
 		std::mt19937 generator(random_seed); // Fixed seed for reproducibility
-        stratified
-            ? return stratified_train_test_split(dataset, labels, split_ratio, generator)
-            : return unstratified_train_test_split(dataset, labels, split_ratio, generator);
+        return stratified ?
+                labels.cols == 1
+                ? single_label_stratified_train_test_split(dataset, labels, split_ratio, generator)
+                : stratified_train_test_split(dataset, labels, split_ratio, generator)
+            : unstratified_train_test_split(dataset, labels, split_ratio, generator);
     }
 }

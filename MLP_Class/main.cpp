@@ -20,7 +20,7 @@ int main() {
     //std::cout << y.asEigen() << '\n';
 
 
-	auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.2, false);
+	auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.2, true);
     //std::cout << X_train.asEigen();
 	std::cout << X.rows << " " << X_train.rows << " " << X_test.rows << '\n';
 
@@ -31,8 +31,9 @@ int main() {
     // TODO:
 	
     // Fix normalizer usage (should be inside model class)
-	
-    // Split dataset into train and test (both stratified and random) [testing left]
+	// Split dataset into train and test (both stratified and random) [testing left]
+    
+    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named Matrix<T>)
 	// Change model.train signature to accept Eigen matrices
 	// Implement validation during training
     // Make save and load work
