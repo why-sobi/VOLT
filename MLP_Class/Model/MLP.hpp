@@ -41,7 +41,7 @@ public:
 		optimizer = nullptr;
 	}
 
-	void fit_transform(DataUtility::Dataset<float>& dataset, DataUtility::Labels<float>& labels, const NormalizeType normType) {
+	void fit_transform(DataUtility::DataMatrix<float>& dataset, DataUtility::DataMatrix<float>& labels, const NormalizeType normType) {
 		normalizer = Normalizer();																			// reset normalizer
 		// asEigen gives us a Map object which is like a matrix view of the underlying data
 		auto dataset_matrix = dataset.asEigen();
@@ -57,7 +57,7 @@ public:
 		}
 	}
 
-	void transform(DataUtility::Dataset<float>& dataset, const NormalizeType normType) {
+	void transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
 		auto dataset_matrix = dataset.asEigen();
 		// Normalize each feature/column
 		for (int i = 0; i < dataset.cols; i++) {
