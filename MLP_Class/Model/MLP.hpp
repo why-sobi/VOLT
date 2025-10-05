@@ -24,7 +24,6 @@ private:
 	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
 
 public:
-	MultiLayerPerceptron() {}
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
@@ -88,14 +87,18 @@ public:
 
 	}
 
-	void train(std::vector<DataUtility::Sample>& data, const int epochs, const int batch_size, const int patience = 10) {
+	void train(DataUtility::DataMatrix<float>& X_train, DataUtility::DataMatrix<float>& y_train, const int epochs, const int batch_size, const int patience = 0) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
-		if (batch_size <= 0) {
+		if (layers.size() <= 1) {
+			std::cerr << "Layers should be more than 1 to train!\n";
+			std::exit(EXIT_FAILURE);
+		}
+		if (batch_size < 0) {
 			std::cerr << "Batch size must be greater than 0!\n";
 			std::exit(EXIT_FAILURE);
 		}
-		if (data.size() == 0) {
+		if (X_train.data.size() == 0 || y_train.data.size() == 0) {
 			std::cerr << "Training data cannot be empty!\n";
 			std::exit(EXIT_FAILURE);
 		}
@@ -107,36 +110,51 @@ public:
 			std::cerr << "Number of Labels(" << labels.size() << ") do not match the output layer's number of neurons(" << layers[layers.size() - 1].getNumNeurons() << ")\n";
 			std::exit(EXIT_FAILURE);
 		}
-		if (patience < 5) {
-			std::cerr << "Patience cannot be less than 5\n";
+		if (patience < 0) {
+			std::cerr << "Patience cannot be a non-negative number\n";
 			std::exit(EXIT_FAILURE);
 		}
+
+		// asEigen gives us a Map object which is like a matrix view of the underlying data
+		auto X_train_matrix = X_train.asEigen();
+		auto y_train_matrix = y_train.asEigen();
 
 		// early convergence check stuff
 		int stale_loss = 0;
 		float prev_loss = std::numeric_limits<float>::max();
 		float min_delta = 1e-3f;
 
-		std::vector<int> indexes(data.size());
-		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, data.size()) to use for shuffling
+		std::vector<int> indexes(X_train.rows);																// total samples
+		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, X_train.rows) to use for shuffling
 
 		int output_size = layers[layers.size() - 1].getNumNeurons();
 		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();		// Used for calculating gradient and loss
+
+		if (this->input_size != X_train.cols) {
+			std::cerr << "Input size (" << this->input_size << ") does not match the dimensions of training features(" << X_train.cols << ")!\n";
+			exit(EXIT_FAILURE);
+		}
+
+		if (output_size != y_train.cols) {
+			std::cerr << "Ouput size (" << output_size << ") does not match the dimensions of Labels(" << y_train.cols << ")!\n";
+			exit(EXIT_FAILURE);
+		}
 
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			float epoch_error = 0.0f;
 			shuffle(indexes);																				// shuffling indexes before each epoch
 
-			for (int start = 0; start < data.size(); start += batch_size) {
-				int end = std::min(start + batch_size, int(data.size()));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
+			for (int start = 0; start < X_train.rows; start += batch_size) {
+				int end = std::min(start + batch_size, int(X_train.rows));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
 				int current_batch_size = end - start;														// either batch_size or < batch_size
 
-				Eigen::MatrixXf batched_features(this->input_size, current_batch_size);						// input size is the number of features each sample would have
-				Eigen::MatrixXf batched_labels(output_size, current_batch_size);							// output size would be the number of labels per sample
+				Eigen::MatrixX<float> batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
+				Eigen::MatrixX<float> batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
 
 				// constructing our matrices
 				for (int b = 0; b < current_batch_size; b++) {
-					const auto& [features, labels] = data[indexes[start + b]];
+					const auto& features = X_train_matrix.row(b);
+					const auto& labels = y_train_matrix.row(b);
 					// Each Column will represent a single Sample
 					batched_features.col(b) = features;														
 					batched_labels.col(b) = labels;
@@ -156,18 +174,21 @@ public:
 
 				backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 			}
-
-			if (prev_loss - epoch_error / data.size() <= min_delta) {
-				++stale_loss;
-				if (stale_loss >= patience) { 
-					std::cout << "Early Stopping at epoch: " << epoch + 1 << " since model converged!\n";
-					break;
+			if (patience != 0) {
+				if (prev_loss - epoch_error / X_train.rows <= min_delta) {
+					++stale_loss;
+					if (stale_loss >= patience) {
+						std::cout << "Early Stopping at epoch: " << epoch + 1 << " since model converged!\n";
+						break;
+					}
 				}
-			} else {
-				stale_loss = 0;
+				else {
+					stale_loss = 0;
+				}
+				prev_loss = epoch_error / X_train.rows;
 			}
-			prev_loss = epoch_error / data.size();
-			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / data.size() << " | Avg Accuracy: " << 1 - epoch_error / data.size() << "\n----------------------------------------------------------\n";
+			
+			std::cout << "Epoch " << epoch + 1 << ", Avg Error: " << epoch_error / X_train.rows << " | Avg Accuracy: " << 1 - epoch_error / X_train.rows << "\n----------------------------------------------------------\n";
 		}
 	}
 
