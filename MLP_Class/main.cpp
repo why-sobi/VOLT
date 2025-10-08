@@ -25,18 +25,19 @@ int main() {
     model.addLayer(2, Activation::ActivationType::Sigmoid);
 
     // new expected should be
-     model.train(X_train, y_train, 1000, 32);
+     model.train(X_train, y_train, 1000, 32, 10);
 
     // TODO:
 	
     // Fix normalizer usage (should be inside model class)
 	// Split dataset into train and test (both stratified and random) [testing left]
-    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named Matrix<T>)
+    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named DataMatrix<T>)
     // Change model.train signature to accept Eigen matrices
-	
     // Implement validation during training
+     
     // Make save and load work
     // CMAKE setup (if wanna)
 
     return 0;
 }
+
