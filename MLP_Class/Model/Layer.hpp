@@ -10,7 +10,7 @@
 #include "../Optimizers/Optimizer.hpp"
 
 class Layer {
-private:
+public:
 	Eigen::MatrixXf weights;                                                                // Rows = Number of Neurons, Columns = Number of Inputs per Neuron
     Eigen::MatrixXf last_batched_input;                                                     // Rows = Number of features, Columns = Numbers of Samples
 	Eigen::MatrixXf last_batched_output;                                                    // Rows = Number of labels, Columns = Numbers of Samples
@@ -59,13 +59,13 @@ public:
 
         new_errors = weights.transpose() * deltas;
 
-        auto dW = (1.f / batch_size) * deltas * last_batched_input.transpose();             // Weights effecting the outcome
-        auto dB = (1.f / batch_size) * deltas.rowwise().sum();                              // Biases affecting the outcome
+        auto dW = deltas * last_batched_input.transpose();             // Weights effecting the outcome
+        auto dB = deltas.rowwise().sum();                              // Biases affecting the outcome
 
         optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx);
 
 		//weights -= (learning_rate / batch_size) * deltas * last_batched_input.transpose();// Update weights (outer product of deltas and last_input)
-  //      biases -= (learning_rate / batch_size) * deltas.rowwise().sum();                  // Update the biases
+        //biases -= (learning_rate / batch_size) * deltas.rowwise().sum();                  // Update the biases
 		errors = new_errors;                                                                // Update the errors vector for the next layer
     }
        

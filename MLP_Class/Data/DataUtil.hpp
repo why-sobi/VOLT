@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <iostream>
 #include <vector>
@@ -10,6 +10,7 @@
 #include <tuple>
 #include <random>
 #include <cstdint>
+#include <span>
 #include <Eigen/Dense>
 
 // Defined headers
@@ -67,15 +68,29 @@ namespace DataUtility {
             }
         }
 
-        float& operator()(size_t i, size_t j) {
+        T& operator()(size_t i, size_t j) {
             return data[i * cols + j]; // row-major
         }
 
-        const float& operator()(size_t i, size_t j) const {
+        const T& operator()(size_t i, size_t j) const {
             return data[i * cols + j];
         }
 
-        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        std::span<T> operator() (size_t i) {
+
+            if (i * cols >= data.size()) {
+                std::cerr << "Out of bounds access!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            return std::span<T>(data.data() + i * cols, cols);
+        }
+
+        /*std::span<const T> operator() (size_t i) const {
+            return std::span<const T>(data.begin() + i * cols, data.begin() + (i + 1) * cols);
+        }*/
+
+        Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
             asEigen() {
             return Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
                 data.data(), rows, cols
@@ -103,7 +118,7 @@ namespace DataUtility {
         }
 
         if (labels.empty()) {
-            std::cerr << "Please Provide Matrix\n";
+            std::cerr << "Please Provide labels\n";
             exit(EXIT_FAILURE);
         }
 

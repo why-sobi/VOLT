@@ -14,7 +14,7 @@
 #include "../Normalizer/Normalizer.hpp"
 
 class MultiLayerPerceptron {
-private:
+public:
 	int input_size;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
@@ -51,7 +51,7 @@ private:
 
 		}
 		else {
-			float tolerance = 1e-6f;  
+			float tolerance = 0.05f;  
 			return ((labels - predictions).array().abs() <= tolerance).cast<float>().mean();
 		}
 	}
@@ -144,7 +144,7 @@ private:
 			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, output_activation, lossType);
 
 			train_error += error;
-			train_accuracy += calculateAccuracy(batched_labels, batched_output);
+			train_accuracy += calculateAccuracy(batched_output, batched_labels);
 			backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 		}
 
@@ -251,6 +251,7 @@ public:
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, X_train.rows) to use for shuffling
 
 		int output_size = layers[layers.size() - 1].getNumNeurons();
+		int num_batches = (X_train.rows + batch_size - 1) / batch_size;
 		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();		// Used for calculating gradient and loss
 
 		if (this->input_size != X_train.cols) {
@@ -266,8 +267,8 @@ public:
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			shuffle(indexes);																				// shuffling indexes before each epoch
 			auto [train_error, train_accuracy] = train_helper(X_train, y_train, batch_size, output_size, indexes, output_activation);
-			train_error /= X_train.rows;
-			train_accuracy /= X_train.rows;
+			train_error /= num_batches;
+			train_accuracy /= num_batches;
 
 			std::cout << "Epoch " << epoch + 1 << ", Train Loss: " << train_error << " | Train Accuracy: " << train_accuracy << "\n----------------------------------------------------------\n";
 		
@@ -340,6 +341,7 @@ public:
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, X_train.rows) to use for shuffling
 
 		int output_size = layers[layers.size() - 1].getNumNeurons();
+		int num_batches = (X_train.rows + batch_size - 1) / batch_size;
 		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();		// Used for calculating gradient and loss
 
 		if (this->input_size != X_train.cols) {
@@ -355,8 +357,8 @@ public:
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			shuffle(indexes);																				// shuffling indexes before each epoch
 			auto [train_error, train_accuracy] = train_helper(X_train, y_train, batch_size, output_size, indexes, output_activation);
-			train_error /= X_train.rows;
-			train_accuracy /= X_train.rows;
+			train_error /= num_batches;
+			train_accuracy /= num_batches;
 
 			auto [val_error, val_accuracy] = validation_helper(X_val, y_val, batch_size, output_size, output_activation);
 			val_error /= X_val.rows;
@@ -419,8 +421,7 @@ public:
 		return current_input;																					// Return the output of the last layer
 	}
 
-	Eigen::VectorX<float> predict(std::vector<float>& input) {
-		std::cout << "Making predictions with the MLP model..." << std::endl;
+	Eigen::VectorX<float> predict(std::span<float>& input) {
 		Eigen::VectorX<float> input_vector = Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size());
 		return forwardPass(input_vector);
 	}
