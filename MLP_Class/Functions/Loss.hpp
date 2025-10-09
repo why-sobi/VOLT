@@ -105,6 +105,12 @@ namespace Loss {
 			std::exit(EXIT_FAILURE);
 		}
 
+		if (last_activation == Activation::ActivationType::Sigmoid) {
+			if (lossType == Type::BinaryCrossEntropy) {
+				return prediction - target;
+			}
+		}
+
 		if (last_activation == Activation::ActivationType::Linear) {
 			if (lossType == Type::BinaryCrossEntropy) {
 				return prediction.unaryExpr(Activation::getActivation(Activation::ActivationType::Sigmoid)) - target;

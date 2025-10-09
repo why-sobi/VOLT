@@ -20,16 +20,16 @@ int main() {
         {0, 1},
         {1, 0},
         {1, 1}
-        });
+    });
 
     DataUtility::DataMatrix<float> y_xor({
         {0},
         {1},
         {1},
         {0}
-        });
+    });
 
-    MultiLayerPerceptron xor_model(X_xor.cols, Loss::Type::MSE, new Adam(0.01));
+    MultiLayerPerceptron xor_model(X_xor.cols, Loss::Type::BinaryCrossEntropy, new Adam(0.01));
     xor_model.addLayer(4, Activation::ActivationType::ReLU);    // Small hidden layer
     xor_model.addLayer(y_xor.cols, Activation::ActivationType::Sigmoid);  // Binary output
 
@@ -46,7 +46,7 @@ int main() {
     }
 }
 
-
+// TEST SPLITS AND DIFFERENT MODEL TRAINING 
 
 
 // TODO:
