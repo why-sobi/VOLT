@@ -82,41 +82,6 @@ std::vector<T> set_diff(std::vector<T>& vec1, std::vector<T>& vec2) { // use thi
 	return result;
 }
 
-//void DerActivation(Eigen::VectorX<float>& input, const Activation::ActivationType function) {
-//	switch (function) {
-//	case Activation::ActivationType::Sigmoid:
-//		input = input.unaryExpr(Activation::d_sigmoid);
-//		break;
-//	case Activation::ActivationType::Tanh:
-//		input = input.unaryExpr(Activation::d_tanh);
-//		break;
-//	case Activation::ActivationType::ReLU:
-//		input = input.unaryExpr(Activation::d_relu);
-//		break;
-//	case Activation::ActivationType::LeakyReLU:
-//		input = input.unaryExpr(Activation::d_leaky_relu);
-//		break;
-//	case Activation::ActivationType::Linear:
-//		input = input.unaryExpr(Activation::d_linear);
-//		break;
-//	case Activation::ActivationType::ELU:
-//		input = input.unaryExpr(Activation::d_elu);
-//		break;
-//	case Activation::ActivationType::Softplus:
-//		input = input.unaryExpr(Activation::d_softplus);
-//		break;
-//	case Activation::ActivationType::Swish:
-//		input = input.unaryExpr(Activation::d_swish);
-//		break;
-//	case Activation::ActivationType::Softmax:
-//		input = Activation::d_softmax(input);
-//		break;
-//	default:
-//		std::cerr << "Unknown activation function type." << std::endl;
-//		exit(EXIT_FAILURE);
-//	}
-//}
-
 template <typename T>
 std::ostream& operator << (std::ostream& out, const std::vector<T>& input) {
 	out << '{';
@@ -143,4 +108,10 @@ std::unordered_map<T, size_t> uniqueCount(const std::vector<T>& vec) {
 		count[val]++;
 	}
 	return count;
+}
+
+template <typename T>
+int total_unique_vales(const std::vector<T>& vec) {
+	std::set<T> unique_vals(vec.begin(), vec.end());
+	return unique_vals.size();
 }

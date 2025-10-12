@@ -14,7 +14,6 @@
 #include <Eigen/Dense>
 
 // Defined headers
-#include "../Normalizer/Normalizer.hpp"
 #include "../Utility/utils.hpp"
 
 // 3rd party
@@ -22,7 +21,6 @@
 
 
 namespace DataUtility {
-    using Sample = std::pair<Eigen::VectorX<float>, Eigen::VectorX<float>>;
 
     template <typename T>
     struct DataMatrix {
@@ -68,6 +66,9 @@ namespace DataUtility {
             }
         }
 
+		auto begin() { return data.begin(); }   // return iterators for STL support
+		auto end() { return data.end(); }       // return iterators for STL support
+
         T& operator()(size_t i, size_t j) {
             return data[i * cols + j]; // row-major
         }
@@ -108,7 +109,20 @@ namespace DataUtility {
         }
     };
 
-    
+    template <typename T>
+    DataMatrix<T> one_hot_encode(const DataMatrix<T>& labels) { // works for simple integer labels only
+        if (labels.cols != 1) {
+            std::cerr << "Labels should be a single column vector for one-hot encoding.\n";
+            exit(EXIT_FAILURE);
+		}
+		DataMatrix<T> encoded(labels.rows, total_unique_vales(labels.data));
+        for (size_t i = 0; i < labels.rows; i++) {
+            for (size_t j = 0; j < encoded.cols; j++) {
+                encoded(i, j) = (labels(i, 0) == static_cast<T>(j)) ? static_cast<T>(1) : static_cast<T>(0);
+            }
+		}
+		return encoded;
+    }
 
     template <typename T>
     std::pair<DataMatrix<T>, DataMatrix<T>> readCSV(const std::string& filename, std::vector<std::string> labels, std::vector<std::string> dropFeatures = {}) {

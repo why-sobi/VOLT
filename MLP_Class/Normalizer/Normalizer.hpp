@@ -6,6 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <Eigen/Dense>
+#include "../Data/DataUtil.hpp"
 
 enum class NormalizeType { None, MinMax, ZScore };
 
@@ -98,6 +99,42 @@ public:
         default: throw std::runtime_error("Unknown normalizer type!");
         }
     }
+
+    void fit_transform(DataUtility::DataMatrix<float>& dataset, DataUtility::DataMatrix<float>& labels, const NormalizeType normType) {
+        *this = Normalizer();																			// reset normalizer
+        // asEigen gives us a Map object which is like a matrix view of the underlying data
+        auto dataset_matrix = dataset.asEigen();
+        auto labels_matrix = labels.asEigen();
+
+        // Normalize each feature/column
+        for (int i = 0; i < dataset.cols; i++) {
+            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+        }
+
+        for (int i = 0; i < labels.cols; i++) {
+            this->normalize("Label " + std::to_string(i), labels_matrix.col(i), normType);
+        }
+    }
+
+    void fit_transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
+        *this = Normalizer();																			// reset normalizer
+        // asEigen gives us a Map object which is like a matrix view of the underlying data
+        auto dataset_matrix = dataset.asEigen();
+
+        // Normalize each feature/column
+        for (int i = 0; i < dataset.cols; i++) {
+            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+        }
+    }
+
+    void transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
+        auto dataset_matrix = dataset.asEigen();
+        // Normalize each feature/column
+        for (int i = 0; i < dataset.cols; i++) {
+            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+        }
+    }
+
 
     float normalizeSingle(const std::string& colRef, float val) const {
         const auto& s = stats.at(colRef);

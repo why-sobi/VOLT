@@ -14,16 +14,14 @@
 #include "../Normalizer/Normalizer.hpp"
 
 class MultiLayerPerceptron {
-public:
+private:
 	int input_size;
 	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
 	std::vector<std::string> labels;
 	
 	Loss::Type lossType;																						// What loss function to use
 	Optimizer* optimizer;																						// Optimizer type
-	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
 
-private:
 	float calculateAccuracy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& labels) const  {
 		if (lossType == Loss::Type::CategoricalCrossEntropy) {
 			// Multi-class classification: argmax comparison
@@ -152,44 +150,28 @@ private:
 	}
 
 public:
+	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
+
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
 	MultiLayerPerceptron(int input_size, Loss::Type lossFunctionName, Optimizer* optimizer) {
+		if (!optimizer) {
+			std::cerr << "Optimizer cannot be a nullptr!\n";
+			std::exit(EXIT_FAILURE);
+		}
 		this->input_size = input_size;
 		this->lossType = lossFunctionName;
 		this->labels = {};
 		this->optimizer = optimizer;
+		normalizer = Normalizer();
+
 	}
 	~MultiLayerPerceptron() {
 		if (optimizer) {
 			delete optimizer;
 		}
 		optimizer = nullptr;
-	}
-
-	void fit_transform(DataUtility::DataMatrix<float>& dataset, DataUtility::DataMatrix<float>& labels, const NormalizeType normType) {
-		normalizer = Normalizer();																			// reset normalizer
-		// asEigen gives us a Map object which is like a matrix view of the underlying data
-		auto dataset_matrix = dataset.asEigen();
-		auto labels_matrix = labels.asEigen();
-
-		// Normalize each feature/column
-		for (int i = 0; i < dataset.cols; i++) {
-			normalizer.normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
-		}
-
-		for (int i = 0; i < labels.cols; i++) {
-			normalizer.normalize("Label " + std::to_string(i), labels_matrix.col(i), normType);
-		}
-	}
-
-	void transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
-		auto dataset_matrix = dataset.asEigen();
-		// Normalize each feature/column
-		for (int i = 0; i < dataset.cols; i++) {
-			normalizer.normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
-		}
 	}
 
 	void setLabels(const std::vector<std::string>& labels) {

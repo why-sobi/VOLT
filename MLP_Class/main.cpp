@@ -9,12 +9,67 @@
 #include <Eigen/Dense>
 
 #include "./Model/MLP.hpp"
-//#include "./Utility/store.hpp"
+
+
 
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
 int main() {
-    // XOR dataset
+	auto start = std::chrono::high_resolution_clock::now();
+
+    auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
+    y = DataUtility::one_hot_encode(y);
+
+    MultiLayerPerceptron model(X.cols, Loss::Type::CategoricalCrossEntropy, new Adam(0.01));
+    model.normalizer.fit_transform(X, NormalizeType::MinMax);
+
+    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y);
+
+    model.addLayer(128, Activation::ActivationType::ReLU);
+    model.addLayer(64, Activation::ActivationType::ReLU);
+    model.addLayer(y.cols, Activation::ActivationType::Softmax);
+
+    model.train(X_train, y_train, 30, 64, 5);
+
+    float correct = 0;
+    for (int i = 0; i < X_test.rows; i++) {
+        auto input = X_test(i);
+        auto prediction = model.predict(input);
+        int pred_class;
+        prediction.maxCoeff(&pred_class);
+        int true_class;
+        y_test.asEigen().row(i).maxCoeff(&true_class);
+        
+		if (pred_class == true_class) correct++;
+	}
+	std::cout << "Accuracy: " << correct / X_test.rows << "\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Data loading, preprocessing and model training took: " << duration << " ms\n";
+    
+    return 0;
+}
+
+// TEST SPLITS AND DIFFERENT MODEL TRAINING 
+
+
+// TODO:
+
+    // Fix normalizer usage (should be inside model class)
+    // Split dataset into train and test (both stratified and random) [testing left]
+    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named DataMatrix<T>)
+    // Change model.train signature to accept Eigen matrices
+    // Implement validation during training
+
+    // Add different weight initializers
+    // Make save and load work
+    // CMAKE setup (if wanna)
+
+
+/*
+* EXAMPLE
+
+// XOR dataset
     DataUtility::DataMatrix<float> X_xor({
         {0, 0},
         {0, 1},
@@ -44,20 +99,5 @@ int main() {
             << "] -> Predicted: " << step_function(prediction[0])
             << ", Actual: " << y_xor(i, 0) << std::endl;
     }
-}
 
-// TEST SPLITS AND DIFFERENT MODEL TRAINING 
-
-
-// TODO:
-
-    // Fix normalizer usage (should be inside model class)
-    // Split dataset into train and test (both stratified and random) [testing left]
-    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named DataMatrix<T>)
-    // Change model.train signature to accept Eigen matrices
-    // Implement validation during training
-
-    // Make save and load work
-    // CMAKE setup (if wanna)
-
-
+*/
