@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 #include <set> // ordered set
+#include <unordered_set>
+#include <unordered_map>
 #include <Eigen/Dense>
 
 #include "../Functions/Activation.hpp"
@@ -111,7 +113,6 @@ std::unordered_map<T, size_t> uniqueCount(const std::vector<T>& vec) {
 }
 
 template <typename T>
-int total_unique_vales(const std::vector<T>& vec) {
-	std::set<T> unique_vals(vec.begin(), vec.end());
-	return unique_vals.size();
+int total_unique_values(const std::vector<T>& vec) {
+	return std::unordered_set<T>(vec.begin(), vec.end()).size();
 }

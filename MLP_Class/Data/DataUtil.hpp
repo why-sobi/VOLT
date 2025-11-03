@@ -115,7 +115,7 @@ namespace DataUtility {
             std::cerr << "Labels should be a single column vector for one-hot encoding.\n";
             exit(EXIT_FAILURE);
 		}
-		DataMatrix<T> encoded(labels.rows, total_unique_vales(labels.data));
+		DataMatrix<T> encoded(labels.rows, total_unique_values(labels.data));
         for (size_t i = 0; i < labels.rows; i++) {
             for (size_t j = 0; j < encoded.cols; j++) {
                 encoded(i, j) = (labels(i, 0) == static_cast<T>(j)) ? static_cast<T>(1) : static_cast<T>(0);

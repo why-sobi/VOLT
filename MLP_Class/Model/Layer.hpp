@@ -8,6 +8,7 @@
 #include "../Functions/Loss.hpp"
 #include "../Utility/utils.hpp"
 #include "../Optimizers/Optimizer.hpp"
+#include "../Weights/Initializers.hpp"
 
 class Layer {
 public:
@@ -20,10 +21,12 @@ public:
 
 public:
     Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { 
-		weights = Eigen::MatrixXf::Random(num_neurons, num_inputs_per_neuron);               // Random weights for each neuron (default range [-1, 1])
-		biases = Eigen::VectorX<float>::Random(num_neurons);                                 // Random biases for each neuron (default range [-1, 1])
+		weights = Eigen::MatrixXf(num_neurons, num_inputs_per_neuron);                      // num_neurons x num_inputs_per_neuron
+		biases = Eigen::VectorX<float>(num_neurons);                                        // num_neurons x 1
 
-		this->functionType = function;                                                       // Need to store this here so that we can serialize the layer later
+		this->functionType = function;                                                      // Need to store this here so that we can serialize the layer later
+    
+        Init::InitWeightsAndBias(weights, biases, Init::setupType(function));
     }
 
     Eigen::MatrixXf forward(const Eigen::MatrixXf& input) {

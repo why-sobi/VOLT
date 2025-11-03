@@ -20,7 +20,8 @@ namespace Activation {
         ELU,
         Softplus,
         Swish,
-        Softmax
+        Softmax,
+        SeLU
     };
 
     // Activation Functions
@@ -56,6 +57,13 @@ namespace Activation {
 
     inline float swish(float x) {
         return x * sigmoid(x);
+    }
+
+    inline float selu(float x) {
+        static float lambda = 1.0507f;
+        static float alpha = 1.67326f;
+
+        return x > 0.0f ? (lambda * x) : (lambda * alpha * (std::exp(x) - 1));
     }
 
     inline Eigen::VectorX<float> softmax(const Eigen::VectorX<float>& input) {
@@ -102,6 +110,13 @@ namespace Activation {
         return s + x * s * (1 - s);
     }
 
+    inline float d_selu(float x) {
+        static float lambda = 1.0507f;
+        static float alpha = 1.67326f;
+
+        return x > 0.0f ? lambda : lambda * alpha * std::exp(x);
+    }
+
 	inline Eigen::MatrixXf d_softmax(const Eigen::VectorX<float>& input) { // calculation of the jacobian matrix (aka derivative of softmax)
         size_t size = input.size();
         Eigen::MatrixXf jacobian(size, size);
@@ -119,6 +134,7 @@ namespace Activation {
         return jacobian;
 	}
     
+    // used when saving or loading (maybe not even have to use it because enums are just numbers)
     inline std::string actTypeToString(ActivationType type) {
         switch (type) {
         case ActivationType::Sigmoid:   return "sigmoid";
@@ -156,6 +172,7 @@ namespace Activation {
         case ActivationType::ELU:       return [](float x) { return elu(x); };
         case ActivationType::Softplus:  return softplus;
         case ActivationType::Swish:     return swish;
+        case ActivationType::SeLU:      return selu;
         }
         throw std::invalid_argument("Unknown ActivationType");
     }
@@ -169,7 +186,7 @@ namespace Activation {
         case ActivationType::Linear:    return d_linear;
         case ActivationType::ELU:       return [](float x) { return d_elu(x); };
         case ActivationType::Softplus:  return d_softplus;
-        case ActivationType::Swish:     return d_swish;
+        case ActivationType::SeLU:      return d_selu;
         }
         throw std::invalid_argument("Unknown ActivationType");
     }

@@ -153,6 +153,7 @@
     <ClInclude Include="Utility\Pair.hpp" />
     <ClInclude Include="Utility\store.hpp" />
     <ClInclude Include="Utility\utils.hpp" />
+    <ClInclude Include="Weights\Initializers.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
