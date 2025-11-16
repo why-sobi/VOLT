@@ -53,5 +53,8 @@
     <ClInclude Include="Weights\Initializers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Regularization\Regularization.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

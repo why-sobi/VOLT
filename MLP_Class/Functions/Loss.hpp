@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include "Activation.hpp"
 
 #include <Eigen/Dense>
 
@@ -15,28 +16,36 @@ namespace Loss {
 	};
 
 	float MeanSquaredError(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
-		
-		Eigen::MatrixXf diff = predictions - targets;
-		float loss = diff.array().square().sum();																			// Summing the square of each value in the error matrix
-		return loss / predictions.cols();																					// averaging over the batch size 
+		// Computes (predictions - targets)^2, sums the results, and averages over columns (batch size).
+		return (predictions - targets).array().square().sum() / (float)predictions.cols();
 	}
 
-	float HingeLoss(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
-		Eigen::MatrixXf lossMatrix = (1.0f - targets.array() * predictions.array()).cwiseMax(0.0f);							// CWiseMax checks which one is Max element-wise
-		return lossMatrix.sum() / predictions.cols();																		// averaging over the batch size 
+	float HingeLoss(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) { // cwise max = element-wise max
+		// Computes max(0, 1 - targets * predictions), sums, and averages.
+		return (1.0f - targets.array() * predictions.array()).cwiseMax(0.0f).sum() / (float)predictions.cols();
 	}
 
 	float BinaryCrossEntropy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
-		Eigen::MatrixXf clipped = predictions.cwiseMax(1e-7f).cwiseMin(1.0f - 1e-7f);										// to avoid log(0)
-		Eigen::MatrixXf lossMatrix = -(targets.array() * clipped.array().log() +	
-			(1.0f - targets.array()) * (1.0f - clipped.array()).log());														// Main formula
-		return lossMatrix.sum() / predictions.cols();																		// averaging over the batch size
+		constexpr float CLIP_MIN = 1e-7f;
+		constexpr float CLIP_MAX = 1.0f - 1e-7f;
+
+		// Clip predictions in-line
+		auto clipped = predictions.array().cwiseMax(CLIP_MIN).cwiseMin(CLIP_MAX); // to avoid log(0)
+
+		return -(
+			targets.array() * clipped.log() +
+			(1.0f - targets.array()) * (1.0f - clipped).log()
+			).sum() / (float)predictions.cols();
 	}
 
 	float CategoricalCrossEntropy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets) {
-		Eigen::MatrixXf clipped = predictions.cwiseMax(1e-7f).cwiseMin(1.0f - 1e-7f);										// to avoid log(0)
-		Eigen::MatrixXf lossMatrix = -targets.array() * clipped.array().log();												// Compute element-wise: -target * log(prediction)
-		return lossMatrix.sum() / predictions.cols();																		// averaging over the batch size
+		constexpr float CLIP_MIN = 1e-7f;
+		constexpr float CLIP_MAX = 1.0f - 1e-7f;
+
+		// Clip predictions in-line
+		auto clipped = predictions.array().cwiseMax(CLIP_MIN).cwiseMin(CLIP_MAX);
+
+		return (-targets.array() * clipped.log()).sum() / (float)predictions.cols();
 	}
 
 	float CalculateLoss(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& targets, Type lossType) {

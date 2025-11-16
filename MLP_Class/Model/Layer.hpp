@@ -9,6 +9,7 @@
 #include "../Utility/utils.hpp"
 #include "../Optimizers/Optimizer.hpp"
 #include "../Weights/Initializers.hpp"
+#include "../Regularization/Regularization.hpp"
 
 class Layer {
 public:
@@ -48,12 +49,21 @@ public:
         return last_batched_output;
     }
 
-    void backPropagate_Layer(Eigen::MatrixXf& errors, const Loss::Type lossType, Optimizer*& optimizer, int idx) {
+    void backPropagate_Layer(
+        Eigen::MatrixXf& errors, 
+        const Loss::Type lossType, 
+        Optimizer*& optimizer,
+        int idx,
+        float lambda,
+        Regularization type
+    ) {
         // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
 		Eigen::MatrixXf new_errors = Eigen::MatrixXf::Zero(last_batched_input.rows(), last_batched_input.cols());
+        
         // Calculate deltas for each neuron (element-wise multiplication of errors and derivative of activation function) (not same as Matrix multiplication)
         Eigen::MatrixXf deltas;
 		int batch_size = last_batched_input.cols();                                         // Number of samples in the batch
+        
         if (functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) {
             deltas = errors;                                                                // Softmax derivative is handled differently (prediction - labels)
         } else {
@@ -62,14 +72,14 @@ public:
 
         new_errors = weights.transpose() * deltas;
 
-        auto dW = deltas * last_batched_input.transpose();             // Weights effecting the outcome
-        auto dB = deltas.rowwise().sum();                              // Biases affecting the outcome
+        Eigen::MatrixX<float> dW = deltas * last_batched_input.transpose();             // Weights effecting the outcome
+        Eigen::VectorX<float> dB = deltas.rowwise().sum();                              // Biases affecting the outcome
 
-        optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx);
+        // Adding regularization added around 10-15 seconds in training time need to check why    (or maybe it doesnt weird things man)     
 
-		//weights -= (learning_rate / batch_size) * deltas * last_batched_input.transpose();// Update weights (outer product of deltas and last_input)
-        //biases -= (learning_rate / batch_size) * deltas.rowwise().sum();                  // Update the biases
-		errors = new_errors;                                                                // Update the errors vector for the next layer
+        regularizeGradient(dW, weights, batch_size, lambda, type);
+        optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx); // Updating in here
+		errors = new_errors;                                           // Update the errors vector for the next layer
     }
        
 	const size_t getNumNeurons() const {
@@ -82,22 +92,5 @@ public:
     const std::string getActivationFunc() const { return Activation::actTypeToString(this->functionType); }
 
     const Activation::ActivationType getActivationType() const { return functionType; }
-
-    /*void backPropagate_Layer(Eigen::VectorX<float>& errors, float learning_rate) {
-       // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
-       Eigen::VectorX<float> new_errors = Eigen::VectorX<float>::Zero(last_input.size());
-       for (int i = 0; i < weights.rows(); i++) {                                          // Iterating over each neuron
-           float delta = errors(i) * derActivationFunction(last_output(i));                // Calculate delta for the neuron
-
-           for (int j = 0; j < weights.cols(); j++) {                                      // Iterating over the neuron's weights
-               new_errors(j) += weights(i, j) * delta;                                     // Update the new errors vector
-               weights(i, j) -= learning_rate * delta * last_input(j);                     // Update the weight
-           }
-
-           biases(i) -= learning_rate * delta;                                             // Update the bias
-       }
-       errors = new_errors;                                                                // Update the errors vector for the next layer
-    }
-    */
 
 };

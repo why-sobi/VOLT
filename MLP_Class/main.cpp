@@ -6,8 +6,9 @@
 #include <algorithm>
 #include <chrono>
 
-#include <Eigen/Dense>
+#define EIGEN_USE_THREADS
 
+#include <Eigen/Dense>
 #include "./Model/MLP.hpp"
 
 
@@ -15,12 +16,11 @@
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
 int main() {
-	auto start = std::chrono::high_resolution_clock::now();
 
     auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
 
-    MultiLayerPerceptron model(X.cols, Loss::Type::CategoricalCrossEntropy, new Adam(0.01));
+    MultiLayerPerceptron model(X.cols, Regularization::L2, 0.0001, Loss::Type::CategoricalCrossEntropy, new Adam(0.01));
     model.normalizer.fit_transform(X, NormalizeType::MinMax);
 
     auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y);
@@ -29,7 +29,9 @@ int main() {
     model.addLayer(64, Activation::ActivationType::ReLU);
     model.addLayer(y.cols, Activation::ActivationType::Softmax);
 
+    auto start = std::chrono::high_resolution_clock::now();
     model.train(X_train, y_train, 30, 64, 5);
+    auto end = std::chrono::high_resolution_clock::now();
 
     float correct = 0;
     for (int i = 0; i < X_test.rows; i++) {
@@ -42,11 +44,11 @@ int main() {
         
 		if (pred_class == true_class) correct++;
 	}
-	std::cout << "Accuracy: " << correct / X_test.rows << "\n";
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::cout << "Data loading, preprocessing and model training took: " << duration << " ms\n";
     
+	std::cout << "Accuracy: " << correct / X_test.rows << "\n";
+    std::cout << "Model training took: " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " s\n";
+
+
     return 0;
 }
 
@@ -60,9 +62,11 @@ int main() {
     // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named DataMatrix<T>)
     // Change model.train signature to accept Eigen matrices
     // Implement validation during training
-
     // Add different weight initializers
+    // Add Regularization (L2)
+
     // Make save and load work
+    // Write extensive documentation (will give a deep dive and theory and also revision)
     // CMAKE setup (if wanna)
 
 

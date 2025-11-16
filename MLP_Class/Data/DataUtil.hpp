@@ -93,7 +93,7 @@ namespace DataUtility {
 
         Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
             asEigen() {
-            return Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+            return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
                 data.data(), rows, cols
             );
         }
@@ -118,9 +118,10 @@ namespace DataUtility {
 		DataMatrix<T> encoded(labels.rows, total_unique_values(labels.data));
         for (size_t i = 0; i < labels.rows; i++) {
             for (size_t j = 0; j < encoded.cols; j++) {
-                encoded(i, j) = (labels(i, 0) == static_cast<T>(j)) ? static_cast<T>(1) : static_cast<T>(0);
+                encoded.data.push_back((labels(i, 0) == static_cast<T>(j)) ? static_cast<T>(1) : static_cast<T>(0));
             }
 		}
+
 		return encoded;
     }
 
@@ -182,14 +183,17 @@ namespace DataUtility {
         
         // Fill data row by row
         // GetCell expected args (ColIdx, RowIdx)
+
         for (size_t i = 0; i < rows; i++) {
-            for (int j : fIdx)
+            
+            for (int j : fIdx) {
                 dataset.data.push_back(doc.GetCell<T>(j, i));
+            }
 
-            for (int j : lIdx)
+            for (int j : lIdx) {
                 labelsSet.data.push_back(doc.GetCell<T>(j, i));
+            }
         }
-
         return { dataset, labelsSet };
     }
 

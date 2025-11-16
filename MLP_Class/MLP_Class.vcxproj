@@ -111,6 +111,8 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(SolutionDir)libs\eigen
 ;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,6 +133,8 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(SolutionDir)libs\eigen
 ;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,6 +154,7 @@
     <ClInclude Include="Model\MLP.hpp" />
     <ClInclude Include="Normalizer\Normalizer.hpp" />
     <ClInclude Include="Optimizers\Optimizer.hpp" />
+    <ClInclude Include="Regularization\Regularization.hpp" />
     <ClInclude Include="Utility\Pair.hpp" />
     <ClInclude Include="Utility\store.hpp" />
     <ClInclude Include="Utility\utils.hpp" />

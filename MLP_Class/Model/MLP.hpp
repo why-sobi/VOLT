@@ -13,6 +13,7 @@
 #include "../Data/DataUtil.hpp"
 #include "../Normalizer/Normalizer.hpp"
 
+
 class MultiLayerPerceptron {
 private:
 	int input_size;
@@ -21,6 +22,9 @@ private:
 	
 	Loss::Type lossType;																						// What loss function to use
 	Optimizer* optimizer;																						// Optimizer type
+
+	Regularization type;
+	float lambda;
 
 	float calculateAccuracy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& labels) const  {
 		if (lossType == Loss::Type::CategoricalCrossEntropy) {
@@ -83,18 +87,18 @@ private:
 				batched_labels.col(b) = labels.transpose();
 			}
 
-			Eigen::MatrixXf batched_output = forwardPass(batched_features);
+			forwardPass(batched_features);
 
-			if (batched_output.rows() != output_size) {
-				std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
+			if (batched_features.rows() != output_size) {
+				std::cerr << "Batched Output size (" << batched_features.rows() << ") does not match expected output size (" << output_size << ")\n";
 				std::exit(EXIT_FAILURE);
 			}
 
-			float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
-			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, output_activation, lossType);
+			float error = Loss::CalculateLoss(batched_features, batched_labels, lossType);
+			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_features, batched_labels, output_activation, lossType);
 
 			val_error += error;
-			val_accuracy += calculateAccuracy(batched_labels, batched_output);
+			val_accuracy += calculateAccuracy(batched_labels, batched_features);
 		}
 
 		return { val_error, val_accuracy };
@@ -124,25 +128,25 @@ private:
 
 			// constructing our matrices
 			for (int b = 0; b < current_batch_size; b++) {
-				const auto& features = X_train_matrix.row(indices[start + b]);
-				const auto& labels = y_train_matrix.row(indices[start + b]);
 				// Each Column will represent a single Sample
-				batched_features.col(b) = features.transpose();
-				batched_labels.col(b) = labels.transpose();
+				batched_features.col(b) = X_train_matrix.row(indices[start + b]);
+				batched_labels.col(b) = y_train_matrix.row(indices[start + b]);
 			}
 
-			Eigen::MatrixXf batched_output = forwardPass(batched_features);
+			// batched_featuers are now transformed batched_output (it is updated in place)
+			forwardPass(batched_features);
 
-			if (batched_output.rows() != output_size) {
-				std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
+			if (batched_features.rows() != output_size) {
+				std::cerr << "Batched Output size (" << batched_features.rows() << ") does not match expected output size (" << output_size << ")\n";
 				std::exit(EXIT_FAILURE);
 			}
 
-			float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
-			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, output_activation, lossType);
+			float error = Loss::CalculateLoss(batched_features, batched_labels, lossType);
+			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_features, batched_labels, output_activation, lossType);
 
 			train_error += error;
-			train_accuracy += calculateAccuracy(batched_output, batched_labels);
+			train_accuracy += calculateAccuracy(batched_features, batched_labels);
+			
 			backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 		}
 
@@ -155,13 +159,15 @@ public:
 	MultiLayerPerceptron(std::string filename) {
 		//this->load(filename); 
 	}
-	MultiLayerPerceptron(int input_size, Loss::Type lossFunctionName, Optimizer* optimizer) {
+	MultiLayerPerceptron(int input_size, Regularization type, float lambda, Loss::Type lossFunctionName, Optimizer* optimizer) {
 		if (!optimizer) {
 			std::cerr << "Optimizer cannot be a nullptr!\n";
 			std::exit(EXIT_FAILURE);
 		}
 		this->input_size = input_size;
 		this->lossType = lossFunctionName;
+		this->type = type;
+		this->lambda = lambda;
 		this->labels = {};
 		this->optimizer = optimizer;
 		normalizer = Normalizer();
@@ -196,7 +202,13 @@ public:
 		optimizer->registerLayer(id, layers.back().getWeights(), layers.back().getBiases());
 	}
 
-	void train(DataUtility::DataMatrix<float>& X_train, DataUtility::DataMatrix<float>& y_train, const int epochs, const int batch_size, const int patience = 0) {
+	void train(
+		DataUtility::DataMatrix<float>& X_train, 
+		DataUtility::DataMatrix<float>& y_train, 
+		const int epochs, 
+		const int batch_size, 
+		const int patience = 0
+	) {
 		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
 		// and vector of Pairs for batch processing
 		if (layers.size() <= 1) {
@@ -249,11 +261,14 @@ public:
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			shuffle(indexes);																				// shuffling indexes before each epoch
 			auto [train_error, train_accuracy] = train_helper(X_train, y_train, batch_size, output_size, indexes, output_activation);
+			
 			train_error /= num_batches;
 			train_accuracy /= num_batches;
 
-			std::cout << "Epoch " << epoch + 1 << ", Train Loss: " << train_error << " | Train Accuracy: " << train_accuracy << "\n----------------------------------------------------------\n";
-		
+			std::cout << "Epoch " << epoch + 1 << 
+				" | Train Loss: " << train_error << 
+				" | Train Accuracy: " << train_accuracy <<
+				"\n----------------------------------------------------------\n";
 			if (patience != 0) {
 				if ((prev_loss - train_error) <= min_delta) {
 					++stale_loss;
@@ -371,22 +386,19 @@ public:
 	void backPropagation(Eigen::MatrixXf& errors) {
 
 		for (int i = layers.size() - 1; i > -1; i--) {
-			layers[i].backPropagate_Layer(errors, lossType, optimizer, i);
+			layers[i].backPropagate_Layer(errors, lossType, optimizer, i, this->lambda, this->type);
 		}
 	}
 
-	Eigen::MatrixXf forwardPass(const Eigen::MatrixXf& input) {
+	void forwardPass(Eigen::MatrixXf& input) {
 		if (int(input.rows()) != this->input_size) {
 			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
 			std::exit(EXIT_FAILURE);
 		}
 
-		Eigen::MatrixXf current_input = input;
 		for (auto& layer : layers) {
-			current_input = layer.forward(current_input);
+			input = layer.forward(input);
 		}
-
-		return current_input;
 	}
 	
 	Eigen::VectorX<float> forwardPass(const Eigen::VectorX<float>& input) {
