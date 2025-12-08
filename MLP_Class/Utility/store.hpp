@@ -43,6 +43,17 @@ std::string read_string(std::fstream& file) {
 }
 
 template <typename T>
+void writeEnum(std::fstream& file, const T& enumVal) {
+    if (!file.is_open()) return;
+    writeNumeric<int>(file, static_cast<int>(enumVal));
+}
+
+template <typename T>
+T readEnum(std::fstream& file) {
+    return static_cast<T>(readNumeric<int>(file));
+}
+
+template <typename T>
 void writeNumericVector(std::fstream& file, const std::vector<T>& vec) {
     if (file.is_open()) {
         // 1. Write the number of elements
