@@ -64,22 +64,25 @@ public:
         Eigen::MatrixXf deltas;
 		int batch_size = last_batched_input.cols();                                         // Number of samples in the batch
         
+        auto s = std::chrono::high_resolution_clock::now();
         if (functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) {
             deltas = errors;                                                                // Softmax derivative is handled differently (prediction - labels)
         } else {
             deltas = errors.cwiseProduct(last_batched_output.unaryExpr(Activation::getDerivative(functionType))); 
 		}
+        auto e = std::chrono::high_resolution_clock::now();
+
 
         new_errors = weights.transpose() * deltas;
 
         Eigen::MatrixX<float> dW = deltas * last_batched_input.transpose();             // Weights effecting the outcome
-        Eigen::VectorX<float> dB = deltas.rowwise().sum();                              // Biases affecting the outcome
-
-        // Adding regularization added around 10-15 seconds in training time need to check why    (or maybe it doesnt weird things man)     
+        Eigen::VectorX<float> dB = deltas.rowwise().sum();                              // Biases affecting the outcome  
 
         regularizeGradient(dW, weights, batch_size, lambda, type);
-        optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx); // Updating in here
-		errors = new_errors;                                           // Update the errors vector for the next layer
+        optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx);                // Updating in here
+
+        errors = new_errors;                                                            // Update the errors vector for the next layer
+        //std::cout << "[Layer " << idx << "] Delta time(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count() << '\n';
     }
        
 	const size_t getNumNeurons() const {

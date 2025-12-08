@@ -16,23 +16,33 @@
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
 int main() {
-
+    // loading data
     auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
 
-    MultiLayerPerceptron model(X.cols, Regularization::L2, 0.0001, Loss::Type::CategoricalCrossEntropy, new Adam(0.01));
-    model.normalizer.fit_transform(X, NormalizeType::MinMax);
+    MultiLayerPerceptron model(
+        X.cols,                                                             // input size
+        Regularization::L2,                                                 // Regularization type
+        0.0001,                                                             // Regularization factor (lambda)
+        Loss::Type::CategoricalCrossEntropy,                                // Loss function type
+        new Adam(0.01)                                                      // Optimizer type
+    );
 
+    model.normalizer.fit_transform(X, NormalizeType::MinMax);
     auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y);
 
+
+    // Adding layers and creating the architecture of the network
     model.addLayer(128, Activation::ActivationType::ReLU);
     model.addLayer(64, Activation::ActivationType::ReLU);
     model.addLayer(y.cols, Activation::ActivationType::Softmax);
 
+    // Training the model
     auto start = std::chrono::high_resolution_clock::now();
-    model.train(X_train, y_train, 30, 64, 5);
+    model.train(X_train, y_train, 30, 64, 0);
     auto end = std::chrono::high_resolution_clock::now();
 
+    // predicting values, and accuracy
     float correct = 0;
     for (int i = 0; i < X_test.rows; i++) {
         auto input = X_test(i);
