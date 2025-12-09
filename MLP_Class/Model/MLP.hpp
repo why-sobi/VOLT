@@ -464,7 +464,7 @@ public:
 			this->layers[s].readLayer(file);
 		}
 
-		this->optimizer->readOptimizer(file);
+		this->optimizer = Optimizer::loadFromFile(file);
 		this->normalizer.readNormalizer(file);
 	}
 };

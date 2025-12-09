@@ -24,27 +24,27 @@ public:
 	virtual void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B,
 		const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) = 0;
     virtual void saveOptimizer(std::fstream& file) = 0;
-    virtual void loadOptimizer(std::fstream& file) = 0;
+    virtual void loadOptimizer(std::fstream& file) = 0; 
 
     static Optimizer* loadFromFile(std::fstream& file) {
         Optimizer* optimizer = nullptr;
         optimizer->opType = io::readEnum<OptimizerType>(file);
-        switch (optimizer->opType) {
-        case OptimizerType::SGD:
-            optimizer = new SGD(0.001); // temp value will be overwritten anyway
-            break;
-        case OptimizerType::Momentum:
-            optimizer = new Momentum(0.001);
-            break;
-        case OptimizerType::Adam:
-            optimizer = new Adam(0.001);
-            break;
-        case OptimizerType::RMSProp:
-            optimizer = new RMSprop(0.001);
-            break;
-        default:
-            throw std::runtime_error("Could not determine type of optimizer!\n");
-        }
+        //switch (optimizer->opType) {
+        //case OptimizerType::SGD:
+        //    optimizer = new SGD(0.001); // temp value will be overwritten anyway
+        //    break;
+        //case OptimizerType::Momentum:
+        //    optimizer = new Momentum(0.001);
+        //    break;
+        //case OptimizerType::Adam:
+        //    optimizer = new Adam(0.001);
+        //    break;
+        //case OptimizerType::RMSProp:
+        //    optimizer = new RMSprop(0.001);
+        //    break;
+        //default:
+        //    throw std::runtime_error("Could not determine type of optimizer!\n");
+        //}
         optimizer->loadOptimizer(file);
 
         return optimizer;

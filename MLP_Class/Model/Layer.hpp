@@ -21,6 +21,7 @@ public:
 	Activation::ActivationType functionType;                                                // Type of activation function used in the layer
 
 public:
+    Layer() {}                                                                              // default constructor shouldn't be used for general usage
     Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { 
 		weights = Eigen::MatrixXf(num_neurons, num_inputs_per_neuron);                      // num_neurons x num_inputs_per_neuron
 		biases = Eigen::VectorX<float>(num_neurons);                                        // num_neurons x 1

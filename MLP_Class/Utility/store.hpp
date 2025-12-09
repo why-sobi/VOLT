@@ -124,7 +124,7 @@ namespace io {
         Eigen::Index cols = readNumeric<Eigen::Index>(file);
 
         Eigen::MatrixX<T> mat(rows, cols);
-        file.read(reinterpret_cast<const char*>(mat.data()), mat.size() * sizeof(T));
+        file.read(reinterpret_cast<char*>(mat.data()), mat.size() * sizeof(T));
 
         return mat;
     }
@@ -145,14 +145,14 @@ namespace io {
     template <typename T>
     Eigen::VectorX<T> readEigenVector(std::fstream& file) {
         if (!file.is_open()) {
-            return Eigen::Vector<T, Eigen::Dynamic, 1>(0, 0);
+            throw std::runtime_error("File Couldnt be opened or is corrupted!\n");
         }
 
         Eigen::Index rows = readNumeric<Eigen::Index>(file);
         Eigen::Index cols = readNumeric<Eigen::Index>(file);
 
         Eigen::VectorX<T> mat(rows, cols);
-        file.read(reinterpret_cast<const char*>(mat.data()), mat.size() * sizeof(T));
+        file.read(reinterpret_cast<char*>(mat.data()), mat.size() * sizeof(T));
 
         return mat;
     }
@@ -171,15 +171,17 @@ namespace io {
     template <typename T>
     std::vector<Eigen::MatrixX<T>> readEigenMatVector(std::fstream& file) {
         if (!file.is_open()) {
-            thorw std::runtime_error("File is not open or corrupted!\n");
+            throw std::runtime_error("File is not open or corrupted!\n");
         }
 
         size_t size = readNumeric<size_t>(file);
-        std::vector<Eigen::MatrixX<T>> matVector();
-        matVector.reserve(size);
+        std::vector<Eigen::MatrixX<T>> matVector;
+        matVector.resize(size);
 
         for (size_t s = 0; s < size; s++) {
-            matVector.pushback(readEigenMatrix<T>(file));
+            //matVector.push_back(readEigenMatrix<T>(file));
+            matVector[s] = readEigenMatrix<T>(file);
+
         }
 
         return matVector;
@@ -199,15 +201,15 @@ namespace io {
     template <typename T>
     std::vector<Eigen::VectorX<T>> readEigenVecVector(std::fstream& file) {
         if (!file.is_open()) {
-            thorw std::runtime_error("File is not open or corrupted!\n");
+            throw std::runtime_error("File is not open or corrupted!\n");
         }
 
         size_t size = readNumeric<size_t>(file);
-        std::vector<Eigen::VectorX<T>> vecVector();
-        vecVector.reserve(size);
+        std::vector<Eigen::VectorX<T>> vecVector;
+        vecVector.resize(size);
 
         for (size_t s = 0; s < size; s++) {
-            vecVector.pushback(readEigenVector<T>(file));
+            vecVector[s] = readEigenVector<T>(file);
         }
 
         return vecVector;
