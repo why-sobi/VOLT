@@ -58,7 +58,8 @@ private:
 		}
 	}
 
-	std::pair<float, float> validation_helper(
+	std::pair<float, float> validation_helper
+	(
 		DataMatrix<float>& X_val,
 		DataMatrix<float>& y_val,
 		const int batch_size,
@@ -105,7 +106,8 @@ private:
 	}
 	
 
-	std::pair<float, float> train_helper(
+	std::pair<float, float> train_helper
+	(
 		DataMatrix<float>& X_train,
 		DataMatrix<float>& y_train,
 		const int batch_size,
@@ -385,7 +387,6 @@ public:
 	}
 
 	void backPropagation(Eigen::MatrixXf& errors) {
-
 		for (int i = layers.size() - 1; i > -1; i--) {
 			layers[i].backPropagate_Layer(errors, lossType, optimizer, i, this->lambda, this->type);
 		}
@@ -428,14 +429,42 @@ public:
 
 	// Save And Load Function
 	void save(const std::string& filename) const {
-		// Save Order: Model Hyperparameters(input size, loss type, reg type, lambda) -> Normalizer Stats -> Layers (weights, biases, activation function) -> Optimizer State
 		std::fstream file(filename + ".bin", std::ios::out | std::ios::binary);
 
-		// Saving Hyperparameters
+		io::writeNumeric<int>(file, this->input_size);
+		io::writeNumeric<float>(file, this->lambda);
 
+		io::writeEnum<Loss::Type>(file, this->lossType);
+		io::writeEnum<Regularization>(file, this->type);
+
+		// vector of layers
+		io::writeNumeric<size_t>(file, this->layers.size());
+		for (const Layer& layer : layers) {
+			layer.saveLayer(file);
+		}
+		
+		this->optimizer->saveOptimizer(file);
+		this->normalizer.saveNormalizer(file);
 	}
 
 	void load(std::string filename) {
-		// Load Order: Model Hyperparameters(input size, loss type, reg type, lambda) -> Normalizer Stats -> Layers (weights, biases, activation function) -> Optimizer State
+		std::fstream file(filename + ".bin", std::ios::in | std::ios::binary);
+
+		this->input_size = io::readNumeric<int>(file);
+		this->lambda = io::readNumeric<float>(file);
+
+		this->lossType = io::readEnum<Loss::Type>(file);
+		this->type = io::readEnum<Regularization>(file);
+
+		// vector of layers
+		size_t size = io::readNumeric<size_t>(file);
+		this->layers = std::vector<Layer>(size);
+
+		for (size_t s = 0; s < size; s++) {
+			this->layers[s].readLayer(file);
+		}
+
+		this->optimizer->readOptimizer(file);
+		this->normalizer.readNormalizer(file);
 	}
 };

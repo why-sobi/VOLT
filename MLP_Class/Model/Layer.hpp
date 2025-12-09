@@ -64,14 +64,11 @@ public:
         Eigen::MatrixXf deltas;
 		int batch_size = last_batched_input.cols();                                         // Number of samples in the batch
         
-        auto s = std::chrono::high_resolution_clock::now();
         if (functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) {
             deltas = errors;                                                                // Softmax derivative is handled differently (prediction - labels)
         } else {
             deltas = errors.cwiseProduct(last_batched_output.unaryExpr(Activation::getDerivative(functionType))); 
 		}
-        auto e = std::chrono::high_resolution_clock::now();
-
 
         new_errors = weights.transpose() * deltas;
 
@@ -82,7 +79,20 @@ public:
         optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx);                // Updating in here
 
         errors = new_errors;                                                            // Update the errors vector for the next layer
-        //std::cout << "[Layer " << idx << "] Delta time(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count() << '\n';
+    }
+
+    void saveLayer(std::fstream& file) const {
+        // writes the content of the layer (relevant ones) into a bin file
+        io::writeEigenMatrix<float>(file, this->weights);
+        io::writeEigenVector<float>(file, this->biases);
+        io::writeEnum<Activation::ActivationType>(file, functionType);
+    }
+
+    void readLayer(std::fstream& file) { 
+        // updates value in-place rather than returning the object
+        this->weights = io::readEigenMatrix<float>(file);
+        this->biases = io::readEigenVector<float>(file);
+        this->functionType = io::readEnum<Activation::ActivationType>(file);
     }
        
 	const size_t getNumNeurons() const {

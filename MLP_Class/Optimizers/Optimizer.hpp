@@ -1,27 +1,74 @@
 #pragma once
 
 #include <Eigen/Dense>
+#include "../Utility/utils.hpp"
+
+enum class OptimizerType : uint8_t {
+    SGD,
+    Momentum,
+    Adam,
+    RMSProp
+};
 
 class Optimizer {
 protected:
-	
-public:
-	Optimizer() {}
+    OptimizerType opType;
 
+    
+    // protected constructor because no need for just optimizer object
+    // can't allow Optimizer* = new Optimizer either
+    Optimizer(OptimizerType OpType): opType(OpType) {} 
+    
+public:
 	virtual void registerLayer(int Idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) {}
 	virtual void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B,
 		const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) = 0;
+    virtual void saveOptimizer(std::fstream& file) = 0;
+    virtual void loadOptimizer(std::fstream& file) = 0;
+
+    static Optimizer* loadFromFile(std::fstream& file) {
+        Optimizer* optimizer = nullptr;
+        optimizer->opType = io::readEnum<OptimizerType>(file);
+        switch (optimizer->opType) {
+        case OptimizerType::SGD:
+            optimizer = new SGD(0.001); // temp value will be overwritten anyway
+            break;
+        case OptimizerType::Momentum:
+            optimizer = new Momentum(0.001);
+            break;
+        case OptimizerType::Adam:
+            optimizer = new Adam(0.001);
+            break;
+        case OptimizerType::RMSProp:
+            optimizer = new RMSprop(0.001);
+            break;
+        default:
+            throw std::runtime_error("Could not determine type of optimizer!\n");
+        }
+        optimizer->loadOptimizer(file);
+
+        return optimizer;
+    }
 };
 
 class SGD : public Optimizer {
 	float lr;
 public:
-	SGD(float learning_rate): lr(learning_rate) {}
+	SGD(float learning_rate): lr(learning_rate), Optimizer(OptimizerType::SGD) {}
 
 	void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B, const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) override {
 		W -= lr * dW;
 		B -= lr * dB;
 	}
+
+    void saveOptimizer(std::fstream& file) override {
+        io::writeEnum<OptimizerType>(file, this->opType);
+        io::writeNumeric<float>(file, this->lr);
+    }
+
+    void loadOptimizer(std::fstream& file) override {
+        this->lr = io::readNumeric<float>(file);
+    }
 };
 
 class Momentum : public Optimizer {
@@ -29,7 +76,7 @@ class Momentum : public Optimizer {
 	std::vector<Eigen::MatrixXf> vW;
     std::vector<Eigen::VectorXf> vB;
 public:
-	Momentum(float learning_rate, float momentum=0.9f) : lr(learning_rate), momentum(momentum) {}
+	Momentum(float learning_rate, float momentum=0.9f) : lr(learning_rate), momentum(momentum), Optimizer(OptimizerType::Momentum) {}
 
 	void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= vW.size()) {
@@ -46,6 +93,22 @@ public:
 		W += vW[idx];
 		B += vB[idx];
 	}
+
+    void saveOptimizer(std::fstream& file) override {
+        io::writeEnum<OptimizerType>(file, this->opType);
+
+        io::writeNumeric<float>(file, this->lr);
+        io::writeNumeric<float>(file, this->momentum);
+        io::writeEigenMatVector<float>(file, this->vW);
+        io::writeEigenVecVector<float>(file, this->vB);
+    }
+
+    void loadOptimizer(std::fstream& file) override {
+        this->lr = io::readNumeric<float>(file);
+        this->momentum = io::readNumeric<float>(file);
+        this->vW = io::readEigenMatVector<float>(file);
+        this->vB = io::readEigenVecVector<float>(file);
+    }
 };
 
 class Adam : public Optimizer {
@@ -56,8 +119,7 @@ class Adam : public Optimizer {
 
 public:
     Adam(float lr, float beta1 = 0.9f, float beta2 = 0.999f, float eps = 1e-8f)
-        : lr(lr), beta1(beta1), beta2(beta2), eps(eps) {
-    }
+        : lr(lr), beta1(beta1), beta2(beta2), eps(eps), Optimizer(OptimizerType::Adam) {}
 
     void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= t.size()) {
@@ -91,6 +153,34 @@ public:
         W.array() -= lr * (mW[idx].array() * bc1) / (vW[idx].array() * bc2).sqrt() + eps;
         B.array() -= lr * (mB[idx].array() * bc1) / (vB[idx].array() * bc2).sqrt() + eps;
     }
+
+    void saveOptimizer(std::fstream& file) override {
+        io::writeEnum<OptimizerType>(file, this->opType);
+
+        io::writeNumeric<float>(file, this->lr);
+        io::writeNumeric<float>(file, this->beta1);
+        io::writeNumeric<float>(file, this->beta2);
+        io::writeNumeric<float>(file, this->eps);
+        
+        io::writeEigenMatVector<float>(file, this->mW);
+        io::writeEigenMatVector<float>(file, this->vW);
+
+        io::writeEigenVecVector<float>(file, this->mB);
+        io::writeEigenVecVector<float>(file, this->vB);
+    }
+
+    void loadOptimizer(std::fstream& file) override {
+        this->lr = io::readNumeric<float>(file);
+        this->beta1 = io::readNumeric<float>(file);
+        this->beta2 = io::readNumeric<float>(file);
+        this->eps = io::readNumeric<float>(file);
+
+        this->mW = io::readEigenMatVector<float>(file);
+        this->vW = io::readEigenMatVector<float>(file);
+        
+        this->mB = io::readEigenVecVector<float>(file);
+        this->vB = io::readEigenVecVector<float>(file);
+    }
 };
 
 
@@ -101,8 +191,7 @@ class RMSprop : public Optimizer {
 
 public:
     RMSprop(float lr, float beta = 0.9f, float eps = 1e-8f)
-        : lr(lr), beta(beta), eps(eps) {
-    }
+        : lr(lr), beta(beta), eps(eps), Optimizer(OptimizerType::RMSProp) {}
 
     void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= sW.size()) {
@@ -120,5 +209,25 @@ public:
 
         W.array() -= lr * dW.array() / (sW[idx].array().sqrt() + eps);
         B.array() -= lr * dB.array() / (sB[idx].array().sqrt() + eps);
+    }
+
+    void saveOptimizer(std::fstream& file) override {
+        io::writeEnum<OptimizerType>(file, this->opType);
+
+        io::writeNumeric<float>(file, this->lr);
+        io::writeNumeric<float>(file, this->beta);
+        io::writeNumeric<float>(file, this->eps);
+
+        io::writeEigenMatVector<float>(file, sW);
+        io::writeEigenVecVector<float>(file, sB);
+    }
+
+    void loadOptimizer(std::fstream& file) override {
+        this->lr = io::readNumeric<float>(file);
+        this->beta = io::readNumeric<float>(file);
+        this->eps = io::readNumeric<float>(file);
+
+        this->sW = io::readEigenMatVector<float>(file);
+        this->sB = io::readEigenVecVector<float>(file);
     }
 };

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <Eigen/Dense>
 #include "../Data/DataUtil.hpp"
+#include "../Utility/utils.hpp"
 
 enum class NormalizeType { None, MinMax, ZScore };
 
@@ -26,7 +27,6 @@ private:
     };
 
     std::unordered_map<std::string, Stats> stats;   // column index → stats
-    std::vector<std::string> featureOrder;
 
     // === helpers ===
     static float safeStdDev(const Eigen::Ref<const Eigen::VectorXf, 0, Eigen::InnerStride<>>& col, float mean) {
@@ -74,7 +74,6 @@ public:
             float std_dev_val = safeStdDev(col, mean_val);
 
             stats[colRef] = Stats(min_val, max_val, mean_val, std_dev_val, type);
-            featureOrder.push_back(colRef);
         }
 
         switch (type) {
@@ -168,16 +167,33 @@ public:
         return stats.find(colRef) != stats.end();
     }
 
-    const std::vector<std::string>& getFeatureOrder() const {
-        return featureOrder;
-    }
-
     void test() {
         for (const auto& [feature, s] : stats) {
             std::cout << "Feature: " << feature << " => "
                 << "Min: " << s.min << ", Max: " << s.max
                 << ", Mean: " << s.mean << ", StdDev: " << s.std_dev
                 << ", Type: " << static_cast<int>(s.type) << "\n";
+        }
+    }
+
+    void saveNormalizer(std::fstream& file) const {
+        size_t size = this->stats.size();
+
+        io::writeNumeric<size_t>(file, size);
+        for (const auto& [key, value] : this->stats) {
+            // key: string
+            // value: Stats object
+
+            io::writeString(file, key);
+            io::writePODStruct<Stats>(file, value);
+        }
+    }
+
+    void readNormalizer(std::fstream& file) {
+        size_t size = io::readNumeric<size_t>(file);
+
+        for (size_t s = 0; s < size; s++) {
+            this->stats[io::readString(file)] = io::readPODStruct<Stats>(file);
         }
     }
 };
