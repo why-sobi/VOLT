@@ -6,59 +6,36 @@
 #include <algorithm>
 #include <chrono>
 
-#define EIGEN_USE_THREADS
-
-#include <Eigen/Dense>
 #include "./Model/MLP.hpp"
 
 
 
 int step_function(float value) { return value < 0.5 ? 0 : 1;  }
 
+template <typename T>
+void saveMatrix(std::fstream& f, const Eigen::MatrixX<T>& mat) {
+    io::writeEigenMatrix<T>(f, mat);
+}
+
+template <typename T>
+void readMatrix(std::fstream& f, Eigen::MatrixX<T>& mat) {
+    mat = io::readEigenMatrix<T>(f);
+}
+
 int main() {
-    // loading data
+    
     auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
 
-    MultiLayerPerceptron model(
-        X.cols,                                                             // input size
-        Regularization::L2,                                                 // Regularization type
-        0.0001,                                                             // Regularization factor (lambda)
-        Loss::Type::CategoricalCrossEntropy,                                // Loss function type
-        new Adam(0.01)                                                      // Optimizer type
-    );
+    //model.save("./model");
+    MultiLayerPerceptron model("./model");
+    model.normalizer.transform(X);
 
-    model.normalizer.fit_transform(X, NormalizeType::MinMax);
     auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y);
 
-
-    // Adding layers and creating the architecture of the network
-    model.addLayer(128, Activation::ActivationType::ReLU);
-    model.addLayer(64, Activation::ActivationType::ReLU);
-    model.addLayer(y.cols, Activation::ActivationType::Softmax);
-
-    // Training the model
-    auto start = std::chrono::high_resolution_clock::now();
-    model.train(X_train, y_train, 30, 64, 0);
-    auto end = std::chrono::high_resolution_clock::now();
-
-    // predicting values, and accuracy
-    float correct = 0;
-    for (int i = 0; i < X_test.rows; i++) {
-        auto input = X_test(i);
-        auto prediction = model.predict(input);
-        int pred_class;
-        prediction.maxCoeff(&pred_class);
-        int true_class;
-        y_test.asEigen().row(i).maxCoeff(&true_class);
-        
-		if (pred_class == true_class) correct++;
-	}
+    std::cout << "Accuracy: " << model.evaluate(X_test, y_test) * 100 << '\n';
     
-	std::cout << "Accuracy: " << correct / X_test.rows << "\n";
-    std::cout << "Model training took: " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " s\n";
-
-
+    
     return 0;
 }
 

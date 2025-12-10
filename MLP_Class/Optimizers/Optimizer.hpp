@@ -10,6 +10,12 @@ enum class OptimizerType : uint8_t {
     RMSProp
 };
 
+class SGD;
+class Momentum;
+class Adam;
+class RMSprop;
+
+
 class Optimizer {
 protected:
     OptimizerType opType;
@@ -26,35 +32,13 @@ public:
     virtual void saveOptimizer(std::fstream& file) = 0;
     virtual void loadOptimizer(std::fstream& file) = 0; 
 
-    static Optimizer* loadFromFile(std::fstream& file) {
-        Optimizer* optimizer = nullptr;
-        optimizer->opType = io::readEnum<OptimizerType>(file);
-        //switch (optimizer->opType) {
-        //case OptimizerType::SGD:
-        //    optimizer = new SGD(0.001); // temp value will be overwritten anyway
-        //    break;
-        //case OptimizerType::Momentum:
-        //    optimizer = new Momentum(0.001);
-        //    break;
-        //case OptimizerType::Adam:
-        //    optimizer = new Adam(0.001);
-        //    break;
-        //case OptimizerType::RMSProp:
-        //    optimizer = new RMSprop(0.001);
-        //    break;
-        //default:
-        //    throw std::runtime_error("Could not determine type of optimizer!\n");
-        //}
-        optimizer->loadOptimizer(file);
-
-        return optimizer;
-    }
+    static Optimizer* loadFromFile(std::fstream& file);
 };
 
 class SGD : public Optimizer {
 	float lr;
 public:
-	SGD(float learning_rate): lr(learning_rate), Optimizer(OptimizerType::SGD) {}
+	SGD(float learning_rate): Optimizer(OptimizerType::SGD), lr(learning_rate) {}
 
 	void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B, const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) override {
 		W -= lr * dW;
@@ -76,7 +60,7 @@ class Momentum : public Optimizer {
 	std::vector<Eigen::MatrixXf> vW;
     std::vector<Eigen::VectorXf> vB;
 public:
-	Momentum(float learning_rate, float momentum=0.9f) : lr(learning_rate), momentum(momentum), Optimizer(OptimizerType::Momentum) {}
+	Momentum(float learning_rate, float momentum=0.9f) : Optimizer(OptimizerType::Momentum), lr(learning_rate), momentum(momentum) {}
 
 	void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= vW.size()) {
@@ -119,7 +103,7 @@ class Adam : public Optimizer {
 
 public:
     Adam(float lr, float beta1 = 0.9f, float beta2 = 0.999f, float eps = 1e-8f)
-        : lr(lr), beta1(beta1), beta2(beta2), eps(eps), Optimizer(OptimizerType::Adam) {}
+        : Optimizer(OptimizerType::Adam), lr(lr), beta1(beta1), beta2(beta2), eps(eps) {}
 
     void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= t.size()) {
@@ -191,7 +175,7 @@ class RMSprop : public Optimizer {
 
 public:
     RMSprop(float lr, float beta = 0.9f, float eps = 1e-8f)
-        : lr(lr), beta(beta), eps(eps), Optimizer(OptimizerType::RMSProp) {}
+        : Optimizer(OptimizerType::RMSProp), lr(lr), beta(beta), eps(eps) {}
 
     void registerLayer(int idx, const Eigen::MatrixXf& W, const Eigen::VectorXf& B) override {
         if (idx >= sW.size()) {
@@ -231,3 +215,28 @@ public:
         this->sB = io::readEigenVecVector<float>(file);
     }
 };
+
+
+Optimizer* Optimizer::loadFromFile(std::fstream& file) {
+    Optimizer* optimizer = nullptr;
+    OptimizerType opType = io::readEnum<OptimizerType>(file);
+    switch (opType) {
+    case OptimizerType::SGD:
+        optimizer = new SGD(0.001); // temp value will be overwritten anyway
+        break;
+    case OptimizerType::Momentum:
+        optimizer = new Momentum(0.001);
+        break;
+    case OptimizerType::Adam:
+        optimizer = new Adam(0.001);
+        break;
+    case OptimizerType::RMSProp:
+        optimizer = new RMSprop(0.001);
+        break;
+    default:
+        throw std::runtime_error("Could not determine type of optimizer!\n");
+    }
+    optimizer->loadOptimizer(file);
+    optimizer->opType = opType;
+    return optimizer;
+}

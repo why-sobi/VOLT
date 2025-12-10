@@ -96,15 +96,9 @@ public:
         this->functionType = io::readEnum<Activation::ActivationType>(file);
     }
        
-	const size_t getNumNeurons() const {
-		return weights.rows();
-	}
-
+	const size_t getNumNeurons() const { return weights.rows(); }
     const Eigen::MatrixXf getWeights() const { return weights; }
     const Eigen::VectorXf getBiases() const { return biases; }
-
     const std::string getActivationFunc() const { return Activation::actTypeToString(this->functionType); }
-
     const Activation::ActivationType getActivationType() const { return functionType; }
-
 };

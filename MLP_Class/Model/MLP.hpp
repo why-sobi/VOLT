@@ -13,6 +13,8 @@
 #include "../Data/DataUtil.hpp"
 #include "../Normalizer/Normalizer.hpp"
 
+#define EIGEN_USE_THREADS
+
 using namespace DataUtility;
 
 class MultiLayerPerceptron {
@@ -179,7 +181,7 @@ public:
 	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
 
 	MultiLayerPerceptron(std::string filename) {
-		//this->load(filename); 
+		this->load(filename); 
 	}
 	MultiLayerPerceptron(int input_size, Regularization type, float lambda, Loss::Type lossFunctionName, Optimizer* optimizer) {
 		if (!optimizer) {
@@ -417,15 +419,68 @@ public:
 		return current_input;																					// Return the output of the last layer
 	}
 
-	Eigen::VectorX<float> predict(std::span<float>& input) {
+	Eigen::VectorX<float> predict(const std::span<float>& input) {
 		Eigen::VectorX<float> input_vector = Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size());
 		return forwardPass(input_vector);
 	}
 
-	float evaluate(const DataMatrix<float>& X_test, const DataMatrix<float>& y_test) {
-		std::string evaluation_type = (lossType == Loss::Type::MSE) ? "Regression" : "Classification";
+	float evaluate(DataMatrix<float>& X_test, DataMatrix<float>& y_test) {
+		Eigen::MatrixX<float> predictions(X_test.rows, y_test.cols); // not single col (if softmax or multilabel and so on ...)
+		auto y_test_matrix = y_test.asEigen();
+
+		for (int i = 0; i < X_test.rows; i++) {
+			predictions.row(i) = this->predict(X_test(i));
+		}
+
+		if (lossType == Loss::Type::CategoricalCrossEntropy ||
+			lossType == Loss::Type::BinaryCrossEntropy ||
+			lossType == Loss::Type::HingeLoss) {
+
+			int correct = 0;
+
+			if (lossType == Loss::Type::BinaryCrossEntropy) {
+				// Binary classification: threshold at 0.5
+				for (int i = 0; i < X_test.rows; i++) {
+					int pred_class = predictions(i, 0) >= 0.5 ? 1 : 0;
+					int true_class = y_test(i, 0) >= 0.5 ? 1 : 0;
+					if (pred_class == true_class) correct++;
+				}
+			}
+			else {
+				// Multi-class: argmax
+				for (int i = 0; i < X_test.rows; i++) {
+					int pred_class, true_class;
+					predictions.row(i).maxCoeff(&pred_class);
+					y_test_matrix.row(i).maxCoeff(&true_class);
+					if (pred_class == true_class) correct++;
+				}
+			}
+
+			return static_cast<float>(correct) / X_test.rows;  // Accuracy
+		}
+
+		// Regression metrics (for MSE)
+		else if (lossType == Loss::Type::MSE) {
+			// Return R² score (coefficient of determination)
+			// R² = 1 - (SS_res / SS_tot)
+
+			// Mean of actual values
+			float y_mean = y_test_matrix.mean();
+			float ss_tot = (y_test_matrix.array() - y_mean).square().sum();
+			float ss_res = (y_test_matrix - predictions).array().square().sum();
+
+			// R² score
+			float r2 = 1.0f - (ss_res / ss_tot);
+
+			return r2;  // Returns value typically between -inf and 1.0
+			// 1.0 = perfect, 0.0 = baseline, <0 = worse than baseline
+		}
+
+		// Unknown loss type
+		else {
+			throw std::runtime_error("Unsupported loss type for evaluation");
+		}
 	}
-	
 
 	// Save And Load Function
 	void save(const std::string& filename) const {
@@ -445,6 +500,8 @@ public:
 		
 		this->optimizer->saveOptimizer(file);
 		this->normalizer.saveNormalizer(file);
+
+		file.close();
 	}
 
 	void load(std::string filename) {
@@ -463,8 +520,13 @@ public:
 		for (size_t s = 0; s < size; s++) {
 			this->layers[s].readLayer(file);
 		}
-
+		if (this->optimizer) {
+			delete optimizer;
+			optimizer = nullptr;
+		}
 		this->optimizer = Optimizer::loadFromFile(file);
 		this->normalizer.readNormalizer(file);
+
+		file.close();
 	}
 };

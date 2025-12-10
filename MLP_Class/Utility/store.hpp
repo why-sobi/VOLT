@@ -12,47 +12,47 @@ namespace io {
     // writing simple datatypes (int, floats, doubles ...)
     template <typename T>
     void writeNumeric(std::fstream& file, const T& numeric) {
-        if (file.is_open())
-            file.write(reinterpret_cast<const char*>(&numeric), sizeof(T));
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+        file.write(reinterpret_cast<const char*>(&numeric), sizeof(T));
     }
 
     template <typename T>
     T readNumeric(std::fstream& file) {
-        T value;
-        if (file.is_open())
-            file.read(reinterpret_cast<char*>(&value), sizeof(T));
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+
+        T value;    
+        file.read(reinterpret_cast<char*>(&value), sizeof(T));
         return value;
     }
 
     void writeString(std::fstream& file, const std::string& str) {
-        if (file.is_open()) {
-            size_t length = str.size();
-            writeNumeric<size_t>(file, length);
-            file.write(str.data(), length);
-        }
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+     
+        size_t length = str.size();
+        writeNumeric<size_t>(file, length);
+        file.write(str.data(), length);
     }
 
     std::string readString(std::fstream& file) {
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+        
         std::string str;
-        if (file.is_open()) {
-            // 1. Read the length of the string
-            size_t length = readNumeric<size_t>(file);
+        size_t length = readNumeric<size_t>(file);
 
-            // 2. Resize the string and read the raw character data
-            str.resize(length);
-            file.read(str.data(), length);
-        }
+        str.resize(length);
+        file.read(str.data(), length);
         return str;
     }
 
     template <typename T>
     void writeEnum(std::fstream& file, const T& enumVal) {
-        if (!file.is_open()) return;
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
         writeNumeric<int>(file, static_cast<int>(enumVal));
     }
 
     template <typename T>
     T readEnum(std::fstream& file) {
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
         return static_cast<T>(readNumeric<int>(file));
     }
 
@@ -73,37 +73,29 @@ namespace io {
 
     template <typename T>
     void writeNumericVector(std::fstream& file, const std::vector<T>& vec) {
-        if (file.is_open()) {
-            // 1. Write the number of elements
-            size_t size = vec.size();
-            writeNumeric<size_t>(file, size);
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+        size_t size = vec.size();
+        writeNumeric<size_t>(file, size);
 
-            // 2. Write the raw data block
-            if (size > 0) {
-                file.write(reinterpret_cast<const char*>(vec.data()), size * sizeof(T));
-            }
-        }
+       file.write(reinterpret_cast<const char*>(vec.data()), size * sizeof(T));
     }
 
     template <typename T>
     std::vector<T> readNumericVector(std::fstream& file) {
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
+        
         std::vector<T> vec;
-        if (file.is_open()) {
-            // 1. Read the number of elements
-            size_t size = readNumeric<size_t>(file);
-
-            // 2. Resize the vector and read the raw data block
-            vec.resize(size);
-            if (size > 0) {
-                file.read(reinterpret_cast<char*>(vec.data()), size * sizeof(T));
-            }
-        }
+        size_t size = readNumeric<size_t>(file);
+        vec.resize(size);
+        
+        file.read(reinterpret_cast<char*>(vec.data()), size * sizeof(T));
+        
         return vec;
     }
 
     template <typename T>
     void writeEigenMatrix(std::fstream& file, const Eigen::MatrixX<T>& mat) {
-        if (!file.is_open()) return;
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
 
         Eigen::Index rows = mat.rows();
         Eigen::Index cols = mat.cols();
@@ -117,7 +109,7 @@ namespace io {
     template <typename T>
     Eigen::MatrixX<T> readEigenMatrix(std::fstream& file) {
         if (!file.is_open()) {
-            return Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(0, 0);
+            throw std::runtime_error("File is corrupted or cannot be opened!\n");
         }
 
         Eigen::Index rows = readNumeric<Eigen::Index>(file);
@@ -131,13 +123,11 @@ namespace io {
 
     template <typename T>
     void writeEigenVector(std::fstream& file, const Eigen::VectorX<T>& mat) {
-        if (!file.is_open()) return;
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");
 
         Eigen::Index rows = mat.rows();
-        Eigen::Index cols = mat.cols();
 
         writeNumeric<Eigen::Index>(file, rows);
-        writeNumeric<Eigen::Index>(file, cols);
 
         file.write(reinterpret_cast<const char*>(mat.data()), mat.size() * sizeof(T));
     }
@@ -149,9 +139,8 @@ namespace io {
         }
 
         Eigen::Index rows = readNumeric<Eigen::Index>(file);
-        Eigen::Index cols = readNumeric<Eigen::Index>(file);
 
-        Eigen::VectorX<T> mat(rows, cols);
+        Eigen::VectorX<T> mat(rows);
         file.read(reinterpret_cast<char*>(mat.data()), mat.size() * sizeof(T));
 
         return mat;
@@ -179,7 +168,6 @@ namespace io {
         matVector.resize(size);
 
         for (size_t s = 0; s < size; s++) {
-            //matVector.push_back(readEigenMatrix<T>(file));
             matVector[s] = readEigenMatrix<T>(file);
 
         }
@@ -189,7 +177,7 @@ namespace io {
 
     template <typename T>
     void writeEigenVecVector(std::fstream& file, const std::vector <Eigen::VectorX<T>>& vecVector) {
-        if (!file.is_open()) return;
+        if (!file.is_open()) throw std::runtime_error("File is not open or corrupted!\n");;
 
         // write total matrices
         writeNumeric<size_t>(file, vecVector.size());

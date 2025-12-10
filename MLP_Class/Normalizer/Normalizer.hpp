@@ -63,7 +63,7 @@ public:
     void normalize(
         const std::string& colRef,
         Eigen::Ref<Eigen::VectorXf, 0, Eigen::InnerStride<>> col,
-        NormalizeType type
+        NormalizeType type = NormalizeType::None
     ) {
         if (col.size() == 0) return;
 
@@ -74,6 +74,9 @@ public:
             float std_dev_val = safeStdDev(col, mean_val);
 
             stats[colRef] = Stats(min_val, max_val, mean_val, std_dev_val, type);
+        }
+        else if (type == NormalizeType::None) {
+            type = stats[colRef].type;
         }
 
         switch (type) {
@@ -126,11 +129,11 @@ public:
         }
     }
 
-    void transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
+    void transform(DataUtility::DataMatrix<float>& dataset) {
         auto dataset_matrix = dataset.asEigen();
         // Normalize each feature/column
         for (int i = 0; i < dataset.cols; i++) {
-            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i));
         }
     }
 
@@ -193,7 +196,10 @@ public:
         size_t size = io::readNumeric<size_t>(file);
 
         for (size_t s = 0; s < size; s++) {
-            this->stats[io::readString(file)] = io::readPODStruct<Stats>(file);
+            std::string key = io::readString(file);
+            Stats statistics = io::readPODStruct<Stats>(file);
+
+            this->stats[key] = statistics;
         }
     }
 };
