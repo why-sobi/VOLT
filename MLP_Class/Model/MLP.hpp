@@ -20,13 +20,12 @@ using namespace DataUtility;
 class MultiLayerPerceptron {
 private:
 	int input_size;
-	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
-	
-	Loss::Type lossType;																						// What loss function to use
-	Optimizer* optimizer;																						// Optimizer type
-
-	Regularization type;
 	float lambda;
+	std::vector<Layer> layers;																					// Vector of layers in the MLP (only has hidden and output layer, no such thing as input layer)
+	Optimizer* optimizer;																						// Optimizer type
+	Loss::Type lossType;																						// What loss function to use
+	Regularization type;
+
 
 	float calculateAccuracy(const Eigen::MatrixXf& predictions, const Eigen::MatrixXf& labels) const  {
 		if (lossType == Loss::Type::CategoricalCrossEntropy) {
@@ -248,7 +247,7 @@ public:
 		// early convergence check stuff
 		int stale_loss = 0;
 		float prev_loss = std::numeric_limits<float>::max();
-		float min_delta = 1e-3f;
+		constexpr float min_delta = 1.5e-3f;
 
 		std::vector<int> indexes(X_train.rows);																// total samples
 		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, X_train.rows) to use for shuffling
@@ -423,6 +422,12 @@ public:
 		Eigen::VectorX<float> input_vector = Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size());
 		return forwardPass(input_vector);
 	}
+
+	// batching and forward passing
+	/*Eigen::MatrixX<float> predict(DataUtility::DataMatrix<float>& X_test, int batch_size = 32) {
+		Eigen::MatrixX<float> predictions(X_test.rows, layers[layers.size() - 1].getNumNeurons());
+
+	}*/
 
 	float evaluate(DataMatrix<float>& X_test, DataMatrix<float>& y_test) {
 		Eigen::MatrixX<float> predictions(X_test.rows, y_test.cols); // not single col (if softmax or multilabel and so on ...)

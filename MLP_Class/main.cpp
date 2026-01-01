@@ -1,41 +1,43 @@
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
-#include <vector>
-#include <unordered_map>
-#include <algorithm>
 #include <chrono>
 
 #include "./Model/MLP.hpp"
 
 
-
-int step_function(float value) { return value < 0.5 ? 0 : 1;  }
-
-template <typename T>
-void saveMatrix(std::fstream& f, const Eigen::MatrixX<T>& mat) {
-    io::writeEigenMatrix<T>(f, mat);
-}
-
-template <typename T>
-void readMatrix(std::fstream& f, Eigen::MatrixX<T>& mat) {
-    mat = io::readEigenMatrix<T>(f);
-}
-
 int main() {
     
     auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
+    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3);
 
-    //model.save("./model");
-    MultiLayerPerceptron model("./model");
-    model.normalizer.transform(X);
+    MultiLayerPerceptron model(
+        X_train.cols,
+        Regularization::L2,
+        0.0001,
+        Loss::Type::CategoricalCrossEntropy,
+        new Adam(0.001)
+    );
 
-    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y);
+
+    model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
+    model.normalizer.transform(X_test);
+
+    model.addLayer(128, Activation::ActivationType::ReLU);
+    model.addLayer(64, Activation::ActivationType::ReLU);
+    model.addLayer(y.cols, Activation::ActivationType::Softmax);
+
+    auto start = std::chrono::high_resolution_clock::now(); // Start the clock
+
+    model.train(X_train, y_train, 30, 64, 3); // The training happens here
+
+    auto end = std::chrono::high_resolution_clock::now(); // Stop the clock
+
+    // Calculate the difference
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "------------------------------------------" << std::endl;
+    std::cout << "TOTAL TRAINING TIME: " << elapsed.count() << " seconds" << std::endl;
 
     std::cout << "Accuracy: " << model.evaluate(X_test, y_test) * 100 << '\n';
-    
-    
     return 0;
 }
 

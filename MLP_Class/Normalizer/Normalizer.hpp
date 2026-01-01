@@ -37,25 +37,34 @@ private:
     }
 
     void minmax(const std::string& colRef, Eigen::Ref<Eigen::VectorXf, 0, Eigen::InnerStride<>> col) {
-        const auto& s = stats[colRef];
-        float range = (s.max - s.min == 0) ? 1e-8f : (s.max - s.min);
+        const Stats& s = stats[colRef];
+        
+        if ((s.max - s.min) == 0) { // this is because this col was ignored in training hence should be ignored in test
+            col.setZero();
+            return;
+        }
+
+        float range = (s.max - s.min);
         col = (col.array() - s.min) / range;
+
+        col = col.array().min(1.0f).max(0.0f); // another check j in case so everything [0, 1]
+
     }
 
     void zscore(const std::string& colRef, Eigen::Ref<Eigen::VectorXf, 0, Eigen::InnerStride<>> col) {
-        const auto& s = stats[colRef];
+        const Stats& s = stats[colRef];
         float denom = (s.std_dev == 0) ? 1e-8f : s.std_dev;
         col = (col.array() - s.mean) / denom;
     }
 
     void reverse_minmax(const std::string& colRef, Eigen::Ref<Eigen::VectorXf, 0, Eigen::InnerStride<>> col) {
-        const auto& s = stats[colRef];
+        const Stats& s = stats[colRef];
         float range = (s.max - s.min == 0) ? 1e-8f : (s.max - s.min);
         col = col.array() * range + s.min;
     }
 
     void reverse_zscore(const std::string& colRef, Eigen::Ref<Eigen::VectorXf, 0, Eigen::InnerStride<>> col) {
-        const auto& s = stats[colRef];
+        const Stats& s = stats[colRef];
         col = col.array() * s.std_dev + s.mean;
     }
 
