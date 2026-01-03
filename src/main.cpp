@@ -6,7 +6,7 @@
 
 
 int main() {
-    auto [X, y] = DataUtility::readCSV<float>("../../datasets/mnist.csv", { "label" });
+    auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
     auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3f);
 
