@@ -10,12 +10,13 @@ int main() {
     y = DataUtility::one_hot_encode(y);
     auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3f);
 
+
     MultiLayerPerceptron model(
         static_cast<int>(X_train.cols),
         Regularization::L2,
-        0.0001f,
+        0.005f,
         Loss::Type::CategoricalCrossEntropy,
-        new Adam(0.001f)
+        new Adam(0.01f)
     );
 
 
@@ -28,7 +29,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now(); // Start the clock
 
-    model.train(X_train, y_train, 30, 64, 3); // The training happens here
+    model.train(X_train, y_train, 30, 64); // The training happens here
 
     auto end = std::chrono::high_resolution_clock::now(); // Stop the clock
 
