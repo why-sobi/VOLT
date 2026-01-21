@@ -12,13 +12,13 @@ int main() {
 
 
     MultiLayerPerceptron model(
-        static_cast<int>(X_train.cols),
-        Regularization::L2,
-        0.005f,
-        Loss::Type::CategoricalCrossEntropy,
-        new Adam(0.01f)
+        static_cast<int>(X_train.cols),         // input size
+        Regularization::L2,                     // regularization type
+        0.005f,                                 // lambda (regularization strength)      
+        Loss::Type::CategoricalCrossEntropy,    // loss function
+        new Adam(0.01f)                         // optimizer (learning rate = 0.01f)
     );
-
+    
 
     model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
     model.normalizer.transform(X_test);
