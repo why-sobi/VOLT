@@ -174,6 +174,38 @@ private:
 		return {train_error, train_accuracy};
 	}
 
+	void backPropagation(Eigen::MatrixXf& errors) {
+		int total_layers = static_cast<int>(layers.size() - 1);
+		for (int i = total_layers; i > -1; i--) {
+			layers[i].backPropagate_Layer(errors, lossType, optimizer, i, this->lambda, this->type);
+		}
+	}
+
+	void forwardPass(Eigen::MatrixXf& input) {
+		if (int(input.rows()) != this->input_size) {
+			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
+			std::exit(EXIT_FAILURE);
+		}
+
+		for (auto& layer : layers) {
+			input = layer.forward(input);
+		}
+	}
+	
+	Eigen::VectorX<float> forwardPass(const Eigen::VectorX<float>& input) {
+		if (input.size() != input_size) {
+			std::cerr << "Input size (" << input.size() << ") does not match the MLP input size (" << this->input_size << ")" << std::endl;
+			std::exit(EXIT_FAILURE);
+		}
+
+		Eigen::VectorX<float> current_input = input;															
+		for (auto& layer : layers) {
+			current_input = layer.forward(current_input);														// Forward pass through each layer 
+		}
+
+		return current_input;																					// Return the output of the last layer
+	}
+
 public:
 	Normalizer normalizer;																						// Normalizer object to handle normalization and denormalization
 
@@ -385,37 +417,15 @@ public:
 		}
 	}
 
-	void backPropagation(Eigen::MatrixXf& errors) {
-		int total_layers = static_cast<int>(layers.size() - 1);
-		for (int i = total_layers; i > -1; i--) {
-			layers[i].backPropagate_Layer(errors, lossType, optimizer, i, this->lambda, this->type);
-		}
-	}
-
-	void forwardPass(Eigen::MatrixXf& input) {
-		if (int(input.rows()) != this->input_size) {
-			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
-			std::exit(EXIT_FAILURE);
-		}
-
-		for (auto& layer : layers) {
-			input = layer.forward(input);
-		}
-	}
+	/// @brief A Public API for back propagation for creating custom models based on a simple model
+	/// EXAMPLES: Autoencoder, GANs ...
+	/// @param errors 
+	void _backPropagation(Eigen::MatrixX<float>& errors) { this->backPropagation(errors); }
 	
-	Eigen::VectorX<float> forwardPass(const Eigen::VectorX<float>& input) {
-		if (input.size() != input_size) {
-			std::cerr << "Input size (" << input.size() << ") does not match the MLP input size (" << this->input_size << ")" << std::endl;
-			std::exit(EXIT_FAILURE);
-		}
-
-		Eigen::VectorX<float> current_input = input;															// Initialize current_input with the input vector (will update it in each layer)
-		for (auto& layer : layers) {
-			current_input = layer.forward(current_input);														// Forward pass through each layer 
-		}
-
-		return current_input;																					// Return the output of the last layer
-	}
+	/// @brief A Public API for back propagation for creating custom models based on a simple model
+	/// EXAMPLES: Autoencoder, GANs ...
+	/// @param input
+	void _forwardPass(Eigen::MatrixX<float>& input) { this->forwardPass(input); }
 
 	Eigen::VectorX<float> predict(const std::span<float>& input) {
 		Eigen::VectorX<float> input_vector = Eigen::Map<Eigen::VectorX<float>>(input.data(), input.size());

@@ -14,7 +14,7 @@ int main() {
     MultiLayerPerceptron model(
         static_cast<int>(X_train.cols),         // input size
         Regularization::L2,                     // regularization type
-        0.005f,                                 // lambda (regularization strength)      
+        0.0001f,                                // lambda (regularization strength)      
         Loss::Type::CategoricalCrossEntropy,    // loss function
         new Adam(0.01f)                         // optimizer (learning rate = 0.01f)
     );
@@ -27,9 +27,10 @@ int main() {
     model.addLayer(64, Activation::ActivationType::ReLU);
     model.addLayer(static_cast<int>(y.cols), Activation::ActivationType::Softmax);
 
+
     auto start = std::chrono::high_resolution_clock::now(); // Start the clock
 
-    model.train(X_train, y_train, 30, 64); // The training happens here
+    model.train(X_train, y_train, 30, 64, 3); // The training happens here
 
     auto end = std::chrono::high_resolution_clock::now(); // Stop the clock
 
@@ -39,6 +40,7 @@ int main() {
     std::cout << "TOTAL TRAINING TIME: " << elapsed.count() << " seconds" << std::endl;
 
     std::cout << "Accuracy: " << model.evaluate(X_test, y_test) * 100 << '\n';
+        
     return 0;
 }
 
