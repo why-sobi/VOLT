@@ -6,10 +6,10 @@
 
 
 int main() {
-    auto [X, y] = DataUtility::readCSV<float>("../datasets/mnist.csv", { "label" });
-    y = DataUtility::one_hot_encode(y);
-    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3f);
-
+    auto [X_train, y_train] = DataUtility::readCSV<float>("../datasets/mnist_train.csv", { "label" });
+    auto [X_test, y_test]   = DataUtility::readCSV<float>("../datasets/mnist_test.csv", { "label" });
+    y_train = DataUtility::one_hot_encode(y_train);
+    y_test  = DataUtility::one_hot_encode(y_test);
 
     MultiLayerPerceptron model(
         static_cast<int>(X_train.cols),         // input size
@@ -23,22 +23,22 @@ int main() {
     model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
     model.normalizer.transform(X_test);
 
+
     model.addLayer(128, Activation::ActivationType::ReLU);
     model.addLayer(64, Activation::ActivationType::ReLU);
-    model.addLayer(static_cast<int>(y.cols), Activation::ActivationType::Softmax);
+    model.addLayer(static_cast<int>(y_train.cols), Activation::ActivationType::Softmax);
 
 
     auto start = std::chrono::high_resolution_clock::now(); // Start the clock
 
-    model.train(X_train, y_train, 30, 64, 3); // The training happens here
+    model.train(X_train, y_train, 30, 64, 3);               // The training happens here
 
-    auto end = std::chrono::high_resolution_clock::now(); // Stop the clock
+    auto end   = std::chrono::high_resolution_clock::now(); // Stop the clock
 
     // Calculate the difference
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "------------------------------------------" << std::endl;
     std::cout << "TOTAL TRAINING TIME: " << elapsed.count() << " seconds" << std::endl;
-
     std::cout << "Accuracy: " << model.evaluate(X_test, y_test) * 100 << '\n';
         
     return 0;
@@ -49,17 +49,12 @@ int main() {
 
 // TODO:
 
-    // Fix normalizer usage (should be inside model class)
-    // Split dataset into train and test (both stratified and random) [testing left]
-    // Change Dataset and Label into the same class (same class name can be used for different purposes and also add a nested vector initializer) (named DataMatrix<T>)
-    // Change model.train signature to accept Eigen matrices
-    // Implement validation during training
-    // Add different weight initializers
-    // Add Regularization (L2)
-
-    // Make save and load work
-    // Write extensive documentation (will give a deep dive and theory and also revision)
-    // CMAKE setup (if wanna)
+// 1. Autograd system
+// 2. Polymorhpic Layer setup
+// 3. No 'new' for Layer use alias for unique ptr for ease of use
+// 4. Batch Norm
+// 5. Pooling
+// 6. Convolution Network
 
 
 /*

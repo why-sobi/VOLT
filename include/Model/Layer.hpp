@@ -27,7 +27,7 @@ public:
 		biases = Eigen::VectorX<float>(num_neurons);                                        // num_neurons x 1
 
 		this->functionType = function;                                                      // Need to store this here so that we can serialize the layer later
-    
+        
         Init::InitWeightsAndBias(weights, biases, Init::setupType(function));
     }
 
