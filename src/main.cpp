@@ -6,10 +6,14 @@
 
 
 int main() {
+    std::cout << "Training MLP on MNIST dataset..." << std::endl;
+
     auto [X_train, y_train] = DataUtility::readCSV<float>("../datasets/mnist_train.csv", { "label" });
     auto [X_test, y_test]   = DataUtility::readCSV<float>("../datasets/mnist_test.csv", { "label" });
     y_train = DataUtility::one_hot_encode(y_train);
     y_test  = DataUtility::one_hot_encode(y_test);
+
+    std::cout << "Training samples: " << X_train.rows << ", Test samples: " << X_test.rows << std::endl;
 
     MultiLayerPerceptron model(
         static_cast<int>(X_train.cols),         // input size
@@ -31,7 +35,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now(); // Start the clock
 
-    model.train(X_train, y_train, 30, 64, 3);               // The training happens here
+    model.train(X_train, y_train, 30, 64, 2);               // The training happens here
 
     auto end   = std::chrono::high_resolution_clock::now(); // Stop the clock
 

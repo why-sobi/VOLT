@@ -37,8 +37,7 @@ inline void regularizeGradient(Eigen::MatrixX<float>& dW, Eigen::MatrixX<float>&
 		break;
 
 	case Regularization::ElasticNet: {
-			Eigen::MatrixX<float> regularization = weights.array().sign().matrix() + weights;
-			dW += (lambda / batch_size) * regularization;
+			dW.array() += (lambda / batch_size) * (weights.array().sign() + weights.array());
 			break;
 	}
 	case Regularization::None:

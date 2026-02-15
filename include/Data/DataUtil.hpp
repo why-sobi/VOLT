@@ -87,15 +87,6 @@ namespace DataUtility {
             return std::span<T>(data.data() + i * cols, cols);
         }
 
-        /*std::span<const T> operator() (size_t i) const {
-            if (i * cols >= data.size()) {
-                std::cerr << "Out of bounds access!" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-
-            return std::span<const T>(data.begin() + i * cols, cols);
-        }*/
-
         Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
             asEigen() {
             return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

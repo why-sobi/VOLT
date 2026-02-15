@@ -13,17 +13,22 @@
 
 class Layer {
 public:
-	Eigen::MatrixXf weights;                                                                // Rows = Number of Neurons, Columns = Number of Inputs per Neuron
-    Eigen::MatrixXf last_batched_input;                                                     // Rows = Number of features, Columns = Numbers of Samples
-	Eigen::MatrixXf last_batched_output;                                                    // Rows = Number of labels, Columns = Numbers of Samples
+	Eigen::MatrixX<float> weights;                                                                // Rows = Number of Neurons, Columns = Number of Inputs per Neuron
+    Eigen::MatrixX<float> last_batched_input;                                                     // Rows = Number of features, Columns = Numbers of Samples
+	Eigen::MatrixX<float> last_batched_output;                                                    // Rows = Number of labels, Columns = Numbers of Samples
     
-    Eigen::VectorX<float> biases;                                                           // Size = Number of Neurons
-	Activation::ActivationType functionType;                                                // Type of activation function used in the layer
+    Eigen::MatrixX<float> new_errors_buffer;                                                      // Used in backpropagation to store the new errors after backpropagating through the layer (to reduce heap allocs)
+    Eigen::MatrixX<float> dW_buffer;                                                              // Used in backpropagation to store the deltas for the layer (to reduce heap allocs)
+    Eigen::VectorX<float> dB_buffer;                                                              // Used in backpropagation to store the deltas for the layer (to reduce heap allocs)
+    Eigen::MatrixX<float> deltas_buffer;                                                          // Used in backpropagation to store the deltas for the layer (to reduce heap allocs)     
+
+    Eigen::VectorX<float> biases;                                                                 // Size = Number of Neurons
+	Activation::ActivationType functionType;                                                      // Type of activation function used in the layer
 
 public:
     Layer() {}                                                                              // default constructor shouldn't be used for general usage
     Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { 
-		weights = Eigen::MatrixXf(num_neurons, num_inputs_per_neuron);                      // num_neurons x num_inputs_per_neuron
+		weights = Eigen::MatrixX<float>(num_neurons, num_inputs_per_neuron);                      // num_neurons x num_inputs_per_neuron
 		biases = Eigen::VectorX<float>(num_neurons);                                        // num_neurons x 1
 
 		this->functionType = function;                                                      // Need to store this here so that we can serialize the layer later
@@ -31,7 +36,7 @@ public:
         Init::InitWeightsAndBias(weights, biases, Init::setupType(function));
     }
 
-    Eigen::MatrixXf forward(const Eigen::MatrixXf& input) {
+    Eigen::MatrixX<float> forward(const Eigen::MatrixX<float>& input) {
         last_batched_input = input;                                                          // For backprop
         last_batched_output = (weights * input).colwise() + biases;                          // calculation AX+B
 
@@ -51,35 +56,31 @@ public:
     }
 
     void backPropagate_Layer(
-        Eigen::MatrixXf& errors, 
+        Eigen::MatrixX<float>& errors, 
         const Loss::Type lossType, 
         Optimizer*& optimizer,
         int idx,
         float lambda,
-        Regularization type
+        Regularization reg_type
     ) {
-        // .size returns the number of elements in the last_input (since its a column vector its just number of rows)
-		Eigen::MatrixXf new_errors = Eigen::MatrixXf::Zero(last_batched_input.rows(), last_batched_input.cols());
+		this->new_errors_buffer.setZero(this->last_batched_input.rows(), this->last_batched_input.cols());
         
         // Calculate deltas for each neuron (element-wise multiplication of errors and derivative of activation function) (not same as Matrix multiplication)
-        Eigen::MatrixXf deltas;
-		int batch_size = (int)last_batched_input.cols();                                         // Number of samples in the batch
+		int batch_size = static_cast<int>(this->last_batched_input.cols());                   // Number of samples in the batch
         
-        if (functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) {
-            deltas = errors;                                                                // Softmax derivative is handled differently (prediction - labels)
-        } else {
-            deltas = errors.cwiseProduct(last_batched_output.unaryExpr(Activation::getDerivative(functionType))); 
-		}
+        // Softmax derivative is handled differently (prediction - labels)
+        if (this->functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) { this->deltas_buffer.noalias() = errors; } 
+        else { this->deltas_buffer.noalias() = errors.cwiseProduct(last_batched_output.unaryExpr(Activation::getDerivative(functionType))); }
 
-        new_errors = weights.transpose() * deltas;
+        // Matrix mul are heavy hence using buffers to store the results and reduce heap allocs by reusing them for each layer
+        new_errors_buffer.noalias() = weights.transpose() * this->deltas_buffer;
+        dW_buffer.noalias() = this->deltas_buffer * last_batched_input.transpose();                         // Weights effecting the outcome
+        dB_buffer.noalias() = this->deltas_buffer.rowwise().sum();                                          // Biases affecting the outcome  
 
-        Eigen::MatrixX<float> dW = deltas * last_batched_input.transpose();             // Weights effecting the outcome
-        Eigen::VectorX<float> dB = deltas.rowwise().sum();                              // Biases affecting the outcome  
+        regularizeGradient(this->dW_buffer, this->weights, batch_size, lambda, reg_type);
+        optimizer->updateWeightsAndBiases(this->weights, biases, this->dW_buffer, this->dB_buffer, idx);    // Updating in here
 
-        regularizeGradient(dW, weights, batch_size, lambda, type);
-        optimizer->updateWeightsAndBiases(weights, biases, dW, dB, idx);                // Updating in here
-
-        errors = new_errors;                                                            // Update the errors vector for the next layer
+        errors.noalias() = this->new_errors_buffer;                                                         // Update the errors vector for the next layer
     }
 
     void saveLayer(std::fstream& file) const {
@@ -97,7 +98,7 @@ public:
     }
        
 	const int getNumNeurons() const { return static_cast<int>(weights.rows()); }
-    const Eigen::MatrixXf getWeights() const { return weights; }
+    const Eigen::MatrixX<float> getWeights() const { return weights; }
     const Eigen::VectorXf getBiases() const { return biases; }
     const std::string getActivationFunc() const { return Activation::actTypeToString(this->functionType); }
     const Activation::ActivationType getActivationType() const { return functionType; }
