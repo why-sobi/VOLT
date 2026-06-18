@@ -22,7 +22,7 @@ int main() {
     );
     
 
-    model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
+    model.normalizer.fit(X_train, NormalizeType::MinMax);
     model.normalizer.transform(X_train);
     model.normalizer.transform(X_test);
 
@@ -47,51 +47,3 @@ int main() {
     return 0;
 }
 
-// TEST SPLITS AND DIFFERENT MODEL TRAINING 
-
-
-// TODO:
-
-// 1. Autograd system
-// 2. Polymorhpic Layer setup
-// 3. No 'new' for Layer use alias for unique ptr for ease of use
-// 4. Batch Norm
-// 5. Pooling
-// 6. Convolution Network
-
-
-/*
-* EXAMPLE
-
-// XOR dataset
-    DataUtility::DataMatrix<float> X_xor({
-        {0, 0},
-        {0, 1},
-        {1, 0},
-        {1, 1}
-    });
-
-    DataUtility::DataMatrix<float> y_xor({
-        {0},
-        {1},
-        {1},
-        {0}
-    });
-
-    MultiLayerPerceptron xor_model(X_xor.cols, Loss::Type::BinaryCrossEntropy, new Adam(0.01));
-    xor_model.addLayer(4, Activation::ActivationType::ReLU);    // Small hidden layer
-    xor_model.addLayer(y_xor.cols, Activation::ActivationType::Sigmoid);  // Binary output
-
-    // No normalization needed for XOR (already 0s and 1s)
-    xor_model.train(X_xor, y_xor, 5000, 4, 5);  // Batch size = 4 (all samples)
-
-    // Test all 4 inputs
-    for (int i = 0; i < 4; i++) {
-        auto input = X_xor(i);
-        auto prediction = xor_model.predict(input);
-        std::cout << "Input: [" << input[0] << ", " << input[1]
-            << "] -> Predicted: " << step_function(prediction[0])
-            << ", Actual: " << y_xor(i, 0) << std::endl;
-    }
-
-*/

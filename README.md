@@ -4,11 +4,11 @@ VOLT is a lightweight, header-only, high-performance C++ Multi-Layer Perceptron 
 
 ### Performance Benchmark
 
-The following benchmark reflects training on the full MNIST dataset under identical circumstances, comparing VOLT against scikit-learn's optimized native backend.
+The following benchmark reflects a structurally identical, fair comparison training on the full MNIST dataset, comparing VOLT against scikit-learn's optimized native backend.
 
 * **Dataset:** MNIST (60,000 training samples, 10,000 test samples)
-* **Task:** Classification (Input: 784, Hidden Layers: [128], Output: 10)
-* **Configuration:** Adam Optimizer (lr=0.001, beta1=0.9, beta2=0.999, eps=1e-8), Batch Size = 64, Single-Precision Float32 Precision
+* **Task:** Classification (Input: 784, Hidden Layers: [128, 64], Output: 10)
+* **Configuration:** Adam Optimizer (lr=0.01, beta1=0.9, beta2=0.999, eps=1e-8, L2 alpha=0.0001), Batch Size = 64, Single-Precision Float32 Precision
 
 #### Hardware Environment
 
@@ -18,10 +18,12 @@ The following benchmark reflects training on the full MNIST dataset under identi
 
 #### Execution Summary
 
-| Framework | Optimization Backend | Convergence / Target | Total Training Time | Speedup Factor |
-| --- | --- | --- | --- | --- |
-| **VOLT (This Engine)** | Eigen (Zero-Allocation Buffers) | 15 Epochs (Early Stopping) | **19.25 seconds** | **3.0x (Baseline)** |
-| **scikit-learn** | C/Cython (Native `fit()` loop) | 15 Epochs | 57.64 seconds | 1.0x |
+| Framework | Optimization Backend | Convergence Target / Stop | Total Training Time | Speed per Epoch | Speedup Factor |
+| --- | --- | --- | --- | --- | --- |
+| **VOLT (This Engine)** | Eigen (Zero-Allocation Buffers) | 16/30 Epochs (Early Stopping) | **20.83 seconds** | **~1.30 seconds** | **3.37x (Overall)** |
+| **scikit-learn** | C/Cython (Native `fit()` loop) | 12/30 Epochs (Early Stopping) | 70.33 seconds | ~5.86 seconds | 1.0x |
+
+*Note: Despite scikit-learn converging 4 epochs earlier due to initial stochastic variations, VOLT processes data at a rate 4.5x faster per epoch and finishes the entire workload significantly sooner.*
 
 ---
 
@@ -74,38 +76,48 @@ cmake --build build -j$(nproc)
 Training a model on a dataset using the VOLT framework:
 
 ```cpp
+#include <iostream>
+#include <chrono>
 #include <Model/MLP.hpp>
 
 int main() {
+    std::cout << "Training MLP on MNIST dataset..." << std::endl;
+
     // 1. Load and Prepare Data
-    auto [X, y] = DataUtility::readCSV<float>("mnist.csv", { "label" });
-    y = DataUtility::one_hot_encode(y);
-    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3f); // 30% test
+    auto [X_train, y_train] = DataUtility::readCSV<float>("../datasets/mnist_train.csv", { "label" });
+    auto [X_test, y_test]   = DataUtility::readCSV<float>("../datasets/mnist_test.csv", { "label" });
+    y_train = DataUtility::one_hot_encode(y_train);
+    y_test  = DataUtility::one_hot_encode(y_test);
+
+    std::cout << "Training samples: " << X_train.rows << ", Test samples: " << X_test.rows << std::endl;
 
     // 2. Define Architecture
     MultiLayerPerceptron model(
-        static_cast<int>(X_train.cols()),
-        Regularization::L2,
-        0.0001f,
-        Loss::Type::CategoricalCrossEntropy,
-        new Adam(0.001f)
+        static_cast<int>(X_train.cols),         // Input size
+        Regularization::L2,                     // Regularization type
+        0.0001f,                                // Lambda (Regularization strength)      
+        Loss::Type::CategoricalCrossEntropy,    // Loss function
+        new Adam(0.01f)                         // Optimizer (Learning rate = 0.01f)
     );
 
     // 3. Preprocess
-    model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
+    model.normalizer.fit(X_train, NormalizeType::MinMax);
+    model.normalizer.transform(X_train);
     model.normalizer.transform(X_test);
 
     // 4. Add Layers
     model.addLayer(128, Activation::ActivationType::ReLU);
-    model.addLayer(static_cast<int>(y.cols()), Activation::ActivationType::Softmax);
+    model.addLayer(64, Activation::ActivationType::ReLU);
+    model.addLayer(static_cast<int>(y_train.cols), Activation::ActivationType::Softmax);
 
-    // 5. Train
-    model.train(X_train, y_train, 15, 64, 3); 
-
+    model.train(X_train, y_train, X_test, y_test, 30, 64, 2); 
+        
     return 0;
 }
 
 ```
+
+---
 
 ## Note
 

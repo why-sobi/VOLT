@@ -111,7 +111,7 @@ public:
         }
     }
 
-    void fit_transform(DataUtility::DataMatrix<float>& dataset, DataUtility::DataMatrix<float>& labels, const NormalizeType normType) {
+    void fit(DataUtility::DataMatrix<float>& dataset, DataUtility::DataMatrix<float>& labels, const NormalizeType normType) {
         *this = Normalizer();																			// reset normalizer
         // asEigen gives us a Map object which is like a matrix view of the underlying data
         auto dataset_matrix = dataset.asEigen();
@@ -127,7 +127,7 @@ public:
         }
     }
 
-    void fit_transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
+    void fit(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
         *this = Normalizer(); 
         auto dataset_matrix = dataset.asEigen();
 
