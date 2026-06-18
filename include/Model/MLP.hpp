@@ -58,54 +58,54 @@ private:
 		}
 	}
 
-	std::pair<float, float> validation_helper
-	(
-		DataMatrix<float>& X_val,
-		DataMatrix<float>& y_val,
+	std::pair<float, float> validation_helper(
+		Eigen::MatrixX<float>& X_val_matrix,
+		Eigen::MatrixX<float>& y_val_matrix,
 		const int batch_size,
 		const int output_size,
 		const Activation::ActivationType output_activation
 	) {
-		auto X_val_matrix = X_val.asEigen();
-		auto y_val_matrix = y_val.asEigen();
+		// Pre-allocate tracking buffers to preserve zero-heap-churn design
+		Eigen::MatrixX<float> batched_features(this->input_size, batch_size);
+		Eigen::MatrixX<float> batched_labels(output_size, batch_size);
+		Eigen::MatrixX<float> batched_output(output_size, batch_size);
 
 		float val_error = 0.0f, val_accuracy = 0.0f;
 
+		// Data matrices map sample records to columns due to Column-Major layout
+		for (int start = 0; start < X_val_matrix.cols(); start += batch_size) {
+			int end = std::min(start + batch_size, int(X_val_matrix.cols()));
+			int current_batch_size = end - start;
 
-		for (int start = 0; start < X_val.rows; start += batch_size) {
-			int end = std::min(start + batch_size, int(X_val.rows));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
-			int current_batch_size = end - start;														// either batch_size or < batch_size
-
-			Eigen::MatrixX<float> batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
-			Eigen::MatrixX<float> batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
-
-			// constructing our matrices
-			for (int b = 0; b < current_batch_size; b++) {
-				const auto& features = X_val_matrix.row(start + b);
-				const auto& labels = y_val_matrix.row(start + b);
-				// Each Column will represent a single Sample
-				batched_features.col(b) = features.transpose();
-				batched_labels.col(b) = labels.transpose();
+			if (current_batch_size != batch_size) {
+				batched_features.resize(this->input_size, current_batch_size);
+				batched_labels.resize(output_size, current_batch_size);
+				batched_output.resize(output_size, current_batch_size);
 			}
 
-			forwardPass(batched_features);
+			// Direct column-to-column memory mapping for validation pass batches
+			for (int b = 0; b < current_batch_size; b++) {
+				batched_features.col(b) = X_val_matrix.col(start + b);
+				batched_labels.col(b) = y_val_matrix.col(start + b);
+			}
 
-			if (batched_features.rows() != output_size) {
-				std::cerr << "Batched Output size (" << batched_features.rows() << ") does not match expected output size (" << output_size << ")\n";
+			// Evaluates utilizing optimized in-place destination buffers
+			forwardPass(batched_features, batched_output);
+
+			if (batched_output.rows() != output_size) {
+				std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
 				std::exit(EXIT_FAILURE);
 			}
 
-			float error = Loss::CalculateLoss(batched_features, batched_labels, lossType);
-			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_features, batched_labels, output_activation, lossType);
+			float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
 
 			val_error += error;
-			val_accuracy += calculateAccuracy(batched_labels, batched_features);
+			val_accuracy += calculateAccuracy(batched_output, batched_labels);
 		}
 
 		return { val_error, val_accuracy };
 	}
 	
-
 	std::pair<float, float> train_helper
 	(
 		Eigen::MatrixX<float>& X_train_matrix,
@@ -377,7 +377,6 @@ public:
 		Eigen::setNbThreads(1);																				// Reset Eigen to use a single thread after training is complete
 	}
 
-	/*
 	void train(
 		DataMatrix<float>& X_train, 
 		DataMatrix<float>& y_train, 
@@ -387,8 +386,6 @@ public:
 		const int batch_size, 
 		const int patience = 0
 	) {
-		// vector of inputs => corresponding to one output vector (depending on the size of output layer) (data) 
-		// and vector of Pairs for batch processing
 		if (layers.size() <= 1) {
 			std::cerr << "Layers should be more than 1 to train!\n";
 			std::exit(EXIT_FAILURE);
@@ -414,46 +411,51 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 
-		// asEigen gives us a Map object which is like a matrix view of the underlying data
-		auto X_val_matrix = X_train.asEigen();
-		auto y_val_matrix = y_val.asEigen();
-
-		// early convergence check stuff
-		int stale_loss = 0;
-		float prev_loss = std::numeric_limits<float>::max();
-		float min_delta = 1e-3f, tolerance = 1e-6f;
-
-		std::vector<int> indexes(X_train.rows);																// total samples
-		std::iota(indexes.begin(), indexes.end(), 0);														// filling the vector with range [0, X_train.rows) to use for shuffling
-
-		int output_size = layers[layers.size() - 1].getNumNeurons();
-		size_t num_batches = (X_train.rows + batch_size - 1) / batch_size;
-		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();		// Used for calculating gradient and loss
-
 		if (this->input_size != X_train.cols) {
 			std::cerr << "Input size (" << this->input_size << ") does not match the dimensions of training features(" << X_train.cols << ")!\n";
 			exit(EXIT_FAILURE);
 		}
 
+		int output_size = layers[layers.size() - 1].getNumNeurons();
 		if (output_size != y_train.cols) {
 			std::cerr << "Output size (" << output_size << ") does not match the dimensions of Labels(" << y_train.cols << ")!\n";
 			exit(EXIT_FAILURE);
 		}
 
+		// Map raw training data and validation data into Eigen column-major views
+		auto X_train_matrix = X_train.asEigen();
+		auto y_train_matrix = y_train.asEigen();
+		auto X_val_matrix = X_val.asEigen();
+		auto y_val_matrix = y_val.asEigen();
+
+		// Early convergence check state
+		int stale_loss = 0;
+		float prev_loss = std::numeric_limits<float>::max();
+		constexpr float min_delta = 1.5e-3f;
+
+		std::vector<int> indexes(X_train.rows);
+		std::iota(indexes.begin(), indexes.end(), 0);
+
+		size_t num_batches = (X_train.rows + batch_size - 1) / batch_size;
+		Activation::ActivationType output_activation = layers[layers.size() - 1].getActivationType();
+
+		// Dynamically adjust Eigen thread scaling for loop steps
+		configureEigenThreads(batch_size);
+
 		for (int epoch = 0; epoch < epochs; ++epoch) {
-			shuffle(indexes);																				// shuffling indexes before each epoch
-			auto [train_error, train_accuracy] = train_helper(X_train, y_train, batch_size, output_size, indexes, output_activation);
+			shuffle(indexes);
+			
+			auto [train_error, train_accuracy] = train_helper(X_train_matrix, y_train_matrix, batch_size, output_size, indexes, output_activation);
 			train_error /= num_batches;
 			train_accuracy /= num_batches;
 
-			auto [val_error, val_accuracy] = validation_helper(X_val, y_val, batch_size, output_size, output_activation);
+			auto [val_error, val_accuracy] = validation_helper(X_val_matrix, y_val_matrix, batch_size, output_size, output_activation);
 			val_error /= X_val.rows;
 			val_accuracy /= X_val.rows;
 
-
 			std::cout << "Epoch " << epoch + 1 << 
-				", Train Loss: " << train_error << " | Train Accuracy: " << train_accuracy <<
-				", Validation Loss: " << val_error << " | Validation Accuracy: " << val_accuracy <<
+				" | Train Loss: " << train_error << " | Train Accuracy: " << train_accuracy <<
+				" | Validation Loss: " << val_error << " | Validation Accuracy: " << val_accuracy <<
 				"\n----------------------------------------------------------\n";
 
 			if (patience != 0) {
@@ -470,8 +472,10 @@ public:
 				prev_loss = val_error;
 			}
 		}
+
+		// Revert Eigen execution behavior to single-thread configuration
+		Eigen::setNbThreads(1);
 	}
-	*/
 
 	/// @brief A Public API for back propagation for creating custom models based on a simple model
 	/// EXAMPLES: Autoencoder, GANs ...
