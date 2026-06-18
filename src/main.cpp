@@ -1,9 +1,7 @@
 #include <iostream>
 #include <chrono>
-#include <omp.h>
 
 #include <Model/MLP.hpp>
-
 
 int main() {
     std::cout << "Training MLP on MNIST dataset..." << std::endl;
@@ -25,6 +23,7 @@ int main() {
     
 
     model.normalizer.fit_transform(X_train, NormalizeType::MinMax);
+    model.normalizer.transform(X_train);
     model.normalizer.transform(X_test);
 
 

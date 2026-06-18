@@ -13,6 +13,7 @@
 #include "../Functions/Activation.hpp"
 #include "store.hpp"
 
+
 float getRandomFloat(float min, float max) {
 	// Generate a random float between min and max
 

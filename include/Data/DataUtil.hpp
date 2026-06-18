@@ -87,11 +87,15 @@ namespace DataUtility {
             return std::span<T>(data.data() + i * cols, cols);
         }
 
-        Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-            asEigen() {
-            return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> asEigen() {
+            // Step A: Map the raw data as Row-Major (zero-copy)
+            auto row_major_map = Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
                 data.data(), rows, cols
             );
+            
+            // Step B: Copy and convert into a highly-optimized Column-Major matrix
+            // Eigen handles this transposition and layout change instantly in memory
+            return row_major_map.transpose(); // since for mat-mul we're using col-major
         }
 
         friend std::ostream& operator<<(std::ostream& out, const DataMatrix& obj) {

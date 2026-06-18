@@ -119,31 +119,37 @@ public:
 
         // Normalize each feature/column
         for (int i = 0; i < dataset.cols; i++) {
-            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+            this->normalize("Data " + std::to_string(i), dataset_matrix.row(i), normType);
         }
 
         for (int i = 0; i < labels.cols; i++) {
-            this->normalize("Label " + std::to_string(i), labels_matrix.col(i), normType);
+            this->normalize("Label " + std::to_string(i), labels_matrix.row(i), normType);
         }
     }
 
     void fit_transform(DataUtility::DataMatrix<float>& dataset, const NormalizeType normType) {
-        *this = Normalizer();																			// reset normalizer
-        // asEigen gives us a Map object which is like a matrix view of the underlying data
+        *this = Normalizer(); 
         auto dataset_matrix = dataset.asEigen();
 
-        // Normalize each feature/column
+        // Loop through rows because rows = features in the transposed Eigen matrix
         for (int i = 0; i < dataset.cols; i++) {
-            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i), normType);
+            this->normalize("Data " + std::to_string(i), dataset_matrix.row(i), normType);
         }
     }
 
     void transform(DataUtility::DataMatrix<float>& dataset) {
         auto dataset_matrix = dataset.asEigen();
-        // Normalize each feature/column
+        
+        // 1. Calculate / Apply normalization on rows
         for (int i = 0; i < dataset.cols; i++) {
-            this->normalize("Data " + std::to_string(i), dataset_matrix.col(i));
+            this->normalize("Data " + std::to_string(i), dataset_matrix.row(i));
         }
+
+        // 2. CRITICAL STEP: Write back the changes to the original dataset reference
+        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> row_major_view(
+            dataset.data.data(), dataset.rows, dataset.cols
+        );
+        row_major_view = dataset_matrix.transpose(); 
     }
 
 

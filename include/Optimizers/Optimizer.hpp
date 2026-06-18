@@ -68,7 +68,7 @@ public:
             vB.resize(idx + 1);
         }
 		vW[idx] = Eigen::MatrixXf::Zero(W.rows(), W.cols());
-		vB[idx] = Eigen::VectorXf::Zero(B.rows(), B.cols());
+		vB[idx] = Eigen::VectorXf::Zero(B.size());
 	}
 
 	void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B, const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) override {
@@ -120,22 +120,38 @@ public:
 
     void updateWeightsAndBiases(Eigen::MatrixXf& W, Eigen::VectorXf& B,
         const Eigen::MatrixXf& dW, const Eigen::VectorXf& dB, int idx) override {
+        
         int tt = ++t[idx];
 
-        // Moment updates
-        mW[idx].array() = beta1 * mW[idx].array() + (1 - beta1) * dW.array();
-        vW[idx].array() = beta2 * vW[idx].array() + (1 - beta2) * dW.array().square();
-
-        mB[idx].array() = beta1 * mB[idx].array() + (1 - beta1) * dB.array();
-        vB[idx].array() = beta2 * vB[idx].array() + (1 - beta2) * dB.array().square();
-
-        // Precompute bias-corrected scalars
         float bc1 = 1.0f / (1.0f - static_cast<float>(std::pow(beta1, tt)));
         float bc2 = 1.0f / (1.0f - static_cast<float>(std::pow(beta2, tt)));
 
-        // Update weights in-place
-        W.array() -= lr * (mW[idx].array() * bc1) / (vW[idx].array() * bc2).sqrt() + eps;
-        B.array() -= lr * (mB[idx].array() * bc1) / (vB[idx].array() * bc2).sqrt() + eps;
+        // Update moments safely
+        mW[idx].array() = beta1 * mW[idx].array() + (1.0f - beta1) * dW.array();
+        
+        // SAFE UPDATE: Clamp the previous vW state to a safe floor before doing the math
+        vW[idx] = vW[idx].cwiseMax(1e-15f);
+        vW[idx].array() = beta2 * vW[idx].array() + (1.0f - beta2) * dW.array().square();
+
+        mB[idx].array() = beta1 * mB[idx].array() + (1.0f - beta1) * dB.array();
+        
+        // SAFE UPDATE: Same for biases
+        vB[idx] = vB[idx].cwiseMax(1e-15f);
+        vB[idx].array() = beta2 * vB[idx].array() + (1.0f - beta2) * dB.array().square();
+
+        // Compute steps and update weights/biases
+        W.array() -= lr * (mW[idx].array() * bc1) / ((vW[idx].array() * bc2).sqrt() + eps);
+        B.array() -= lr * (mB[idx].array() * bc1) / ((vB[idx].array() * bc2).sqrt() + eps);
+
+        // Flush actual weights and gradients that dropped out of relevance
+        auto flush_subnormals = [](float x) {
+            return (std::abs(x) < 1e-15f) ? 0.0f : x;
+        };
+
+        W = W.unaryExpr(flush_subnormals);
+        B = B.unaryExpr(flush_subnormals);
+        mW[idx] = mW[idx].unaryExpr(flush_subnormals);
+        mB[idx] = mB[idx].unaryExpr(flush_subnormals);
     }
 
     void saveOptimizer(std::fstream& file) override {
@@ -191,8 +207,8 @@ public:
         sW[idx].array() = beta * sW[idx].array() + (1 - beta) * dW.array().square();
         sB[idx].array() = beta * sB[idx].array() + (1 - beta) * dB.array().square();
 
-        W.array() -= lr * dW.array() / (sW[idx].array().sqrt() + eps);
-        B.array() -= lr * dB.array() / (sB[idx].array().sqrt() + eps);
+        W.array() -= lr * dW.array() / ((sW[idx].array().sqrt() + eps));
+        B.array() -= lr * dB.array() / ((sB[idx].array().sqrt() + eps));
     }
 
     void saveOptimizer(std::fstream& file) override {

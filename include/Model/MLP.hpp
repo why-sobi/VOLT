@@ -7,6 +7,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <fstream>
+#include <thread>
 
 #include "Layer.hpp"
 #include "../Utility/Pair.hpp"
@@ -107,65 +108,71 @@ private:
 
 	std::pair<float, float> train_helper
 	(
-		DataMatrix<float>& X_train,
-		DataMatrix<float>& y_train,
+		Eigen::MatrixX<float>& X_train_matrix,
+		Eigen::MatrixX<float>& y_train_matrix,
 		const int batch_size,
 		const int output_size,
 		const std::vector<int>& indices,
 		const Activation::ActivationType output_activation
 	) {
-		auto X_train_matrix = X_train.asEigen();
-		auto y_train_matrix = y_train.asEigen();
+		Eigen::MatrixX<float> batched_features(this->input_size, batch_size);							// input size is the number of features each sample would have
+		Eigen::MatrixX<float> batched_labels(output_size, batch_size);									// output size would be the number of labels per sample
+		Eigen::MatrixX<float> batched_output(output_size, batch_size);									// to store the output of the forward pass for the batch (updated in place to save memory)
 
 		float train_error = 0.0f, train_accuracy = 0.0f;
 
 		long long f_time = 0, e_time = 0, grad_time = 0, prop_time = 0;
+		
+		// IMPORANT: X_train is row-major but X_train_matrix is col-major. 
+		// i.e X_train rows = X_train_matrix cols and vise versa
 
-		for (int start = 0; start < X_train.rows; start += batch_size) {
-			int end = std::min(start + batch_size, int(X_train.rows));									// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
+		for (int start = 0; start < X_train_matrix.cols(); start += batch_size) {
+			int end = std::min(start + batch_size, int(X_train_matrix.cols()));							// checking if the remaining will sum to the batch size or fall short (last ones could fall short)
 			int current_batch_size = end - start;														// either batch_size or < batch_size
 
-			Eigen::MatrixX<float> batched_features(this->input_size, current_batch_size);				// input size is the number of features each sample would have
-			Eigen::MatrixX<float> batched_labels(output_size, current_batch_size);						// output size would be the number of labels per sample
+			if (current_batch_size != batch_size) {														// only for the last batch we'd resize (otherwise we're using pre-allocated buffers to reduce heap allocs)
+				batched_features.resize(this->input_size, current_batch_size);
+				batched_labels.resize(output_size, current_batch_size);
+				batched_output.resize(output_size, current_batch_size);
+			}
 
 			// constructing our matrices
 			for (int b = 0; b < current_batch_size; b++) {
 				// Each Column will represent a single Sample
-				batched_features.col(b) = X_train_matrix.row(indices[start + b]);
-				batched_labels.col(b) = y_train_matrix.row(indices[start + b]);
+				batched_features.col(b) = X_train_matrix.col(indices[start + b]); 						// since the data is stored in column major format, we can directly map the columns to the batched features
+				batched_labels.col(b) = y_train_matrix.col(indices[start + b]); 						// since the data is stored in column major format, we can directly map the columns to the batched features
 			}
 
 			// batched_featuers are now transformed batched_output (it is updated in place)
 			auto f_start = std::chrono::high_resolution_clock::now();
-			forwardPass(batched_features);
+			forwardPass(batched_features, batched_output);
 			auto f_end = std::chrono::high_resolution_clock::now();
 			f_time += std::chrono::duration_cast<std::chrono::milliseconds>(f_end - f_start).count();
 
 
-			if (batched_features.rows() != output_size) {
-				std::cerr << "Batched Output size (" << batched_features.rows() << ") does not match expected output size (" << output_size << ")\n";
+			if (batched_output.rows() != output_size) {
+				std::cerr << "Batched Output size (" << batched_output.rows() << ") does not match expected output size (" << output_size << ")\n";
 				std::exit(EXIT_FAILURE);
 			}
 
 			auto e_start = std::chrono::high_resolution_clock::now();
-			float error = Loss::CalculateLoss(batched_features, batched_labels, lossType);
+			float error = Loss::CalculateLoss(batched_output, batched_labels, lossType);
 			auto e_end = std::chrono::high_resolution_clock::now();
 			e_time += std::chrono::duration_cast<std::chrono::milliseconds>(e_end - e_start).count();
 
 
-			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_features, batched_labels, output_activation, lossType);
+			Eigen::MatrixXf propagatingErrors = Loss::CalculateGradient(batched_output, batched_labels, output_activation, lossType);
 			auto CG_end = std::chrono::high_resolution_clock::now();
 			grad_time += std::chrono::duration_cast<std::chrono::milliseconds>(CG_end - e_end).count();
 
 
 			train_error += error;
-			train_accuracy += calculateAccuracy(batched_features, batched_labels);
+			train_accuracy += calculateAccuracy(batched_output, batched_labels);
 			
 			auto bp_start = std::chrono::high_resolution_clock::now();
 			backPropagation(propagatingErrors);															// Backpropagation to update weights and biases
 			auto bp_end = std::chrono::high_resolution_clock::now();
 			prop_time += std::chrono::duration_cast<std::chrono::milliseconds>(bp_end - bp_start).count();
-
 		}
 		std::cout << "Forward Pass: " << f_time <<
 			"(ms) | Error Calc: " << e_time <<
@@ -181,16 +188,24 @@ private:
 		}
 	}
 
-	void forwardPass(Eigen::MatrixXf& input) {
+	void forwardPass(const Eigen::MatrixXf& input, Eigen::MatrixXf& output) { 
 		if (int(input.rows()) != this->input_size) {
-			std::cerr << "The Batched Input features size: " << int(input.rows()) << " does not match the input size : " << this->input_size << '\n';
+			std::cerr << "The Batched Input features size: " << int(input.rows()) 
+					<< " does not match the input size : " << this->input_size << '\n';
 			std::exit(EXIT_FAILURE);
 		}
 
+		// Copy the batch inputs into a tracking variable once
+		Eigen::MatrixXf current_activation = input;
+
 		for (auto& layer : layers) {
-			input = layer.forward(input);
+			// Each layer consumes the current activation vector/matrix,
+			// caches what it needs internally, and returns the newly computed activation
+			current_activation = layer.forward(current_activation);
 		}
-	}
+
+		output = current_activation; // the final output after passing through all layers
+	}	
 	
 	Eigen::VectorX<float> forwardPass(const Eigen::VectorX<float>& input) {
 		if (input.size() != input_size) {
@@ -204,6 +219,38 @@ private:
 		}
 
 		return current_input;																					// Return the output of the last layer
+	}
+
+	void configureEigenThreads(int batch_size) {
+		long long max_layer_flops = 0;
+
+		// Evaluate the heaviest layer configuration in your network
+		for (const auto& layer : layers) {
+			// input_dim = weights.cols(), output_dim = weights.rows()
+			long long layer_input = layer.weights.cols();
+			long long layer_output = layer.weights.rows();
+			
+			// GEMM FLOP footprint estimate: 2 * M * N * K
+			long long current_flops = 2LL * batch_size * layer_input * layer_output;
+			
+			if (current_flops > max_layer_flops) {
+				max_layer_flops = current_flops;
+			}
+		}
+
+		int max_cores = std::thread::hardware_concurrency(); // Cross-platform nproc
+		int optimal_threads = 1;
+
+		// Operational limits based on scheduling overhead benchmarks
+		if (max_layer_flops > 50'000'000) {      
+			optimal_threads = max_cores;
+		} else if (max_layer_flops > 5'000'000) { 
+			optimal_threads = std::max(2, max_cores / 2);
+		} else {                           
+			optimal_threads = 1; // Drop to 1 thread for tiny batches to kill synchronization overhead
+		}
+
+		Eigen::setNbThreads(optimal_threads);
 	}
 
 public:
@@ -296,9 +343,14 @@ public:
 			exit(EXIT_FAILURE);
 		}
 
+		auto X_train_matrix = X_train.asEigen();														// column-major mapping of the training data (features)
+		auto y_train_matrix = y_train.asEigen();														// column-major mapping of the training labels
+		
+		configureEigenThreads(batch_size);																// Configure Eigen to use optimal number of threads based on the batch size and layer sizes
+
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			shuffle(indexes);																				// shuffling indexes before each epoch
-			auto [train_error, train_accuracy] = train_helper(X_train, y_train, batch_size, output_size, indexes, output_activation);
+			auto [train_error, train_accuracy] = train_helper(X_train_matrix, y_train_matrix, batch_size, output_size, indexes, output_activation);
 			
 			train_error /= num_batches;
 			train_accuracy /= num_batches;
@@ -321,8 +373,11 @@ public:
 				prev_loss = train_error;
 			}
 		}
+
+		Eigen::setNbThreads(1);																				// Reset Eigen to use a single thread after training is complete
 	}
 
+	/*
 	void train(
 		DataMatrix<float>& X_train, 
 		DataMatrix<float>& y_train, 
@@ -416,6 +471,7 @@ public:
 			}
 		}
 	}
+	*/
 
 	/// @brief A Public API for back propagation for creating custom models based on a simple model
 	/// EXAMPLES: Autoencoder, GANs ...
@@ -439,13 +495,23 @@ public:
 	}*/
 
 	float evaluate(DataMatrix<float>& X_test, DataMatrix<float>& y_test) {
-		Eigen::MatrixX<float> predictions(X_test.rows, y_test.cols); // not single col (if softmax or multilabel and so on ...)
+		// 1. Convert targets to Eigen matrix first so we know the true dimensions
+		// y_test_matrix shape is now: [output_size rows x test_samples columns]
 		auto y_test_matrix = y_test.asEigen();
+		int num_test_samples = static_cast<int>(y_test_matrix.cols());
+		int output_size = static_cast<int>(y_test_matrix.rows());
 
-		for (int i = 0; i < X_test.rows; i++) {
-			predictions.row(i) = this->predict(X_test(i));
+		// 2. Allocate the predictions matrix matching the Column-Major layout
+		Eigen::MatrixX<float> predictions(output_size, num_test_samples); 
+
+		// 3. Populate predictions column by column
+		// Assuming X_test.asEigen() returns the same transposed [features x samples] layout
+		for (int i = 0; i < num_test_samples; i++) {
+			// Pass the column vector corresponding to the i-th test sample
+			predictions.col(i) = this->predict(X_test(i));
 		}
 
+		// 4. Handle Classification Metrics
 		if (lossType == Loss::Type::CategoricalCrossEntropy ||
 			lossType == Loss::Type::BinaryCrossEntropy ||
 			lossType == Loss::Type::HingeLoss) {
@@ -453,41 +519,38 @@ public:
 			int correct = 0;
 
 			if (lossType == Loss::Type::BinaryCrossEntropy) {
-				// Binary classification: threshold at 0.5
-				for (int i = 0; i < X_test.rows; i++) {
-					int pred_class = predictions(i, 0) >= 0.5 ? 1 : 0;
-					int true_class = y_test(i, 0) >= 0.5 ? 1 : 0;
+				// Binary classification: threshold at 0.5 along row 0 for each column i
+				for (int i = 0; i < num_test_samples; i++) {
+					int pred_class = predictions(0, i) >= 0.5f ? 1 : 0;
+					int true_class = y_test_matrix(0, i) >= 0.5f ? 1 : 0;
 					if (pred_class == true_class) correct++;
 				}
 			}
 			else {
-				// Multi-class: argmax
-				for (int i = 0; i < X_test.rows; i++) {
+				// Multi-class classification: run argmax down each column sample
+				for (int i = 0; i < num_test_samples; i++) {
 					int pred_class, true_class;
-					predictions.row(i).maxCoeff(&pred_class);
-					y_test_matrix.row(i).maxCoeff(&true_class);
+					predictions.col(i).maxCoeff(&pred_class);
+					y_test_matrix.col(i).maxCoeff(&true_class);
 					if (pred_class == true_class) correct++;
 				}
 			}
 
-			return static_cast<float>(correct) / X_test.rows;  // Accuracy
+			return static_cast<float>(correct) / static_cast<float>(num_test_samples);  // Accuracy
 		}
 
-		// Regression metrics (for MSE)
+		// 5. Handle Regression Metrics (MSE)
 		else if (lossType == Loss::Type::MSE) {
-			// Return R� score (coefficient of determination)
-			// R� = 1 - (SS_res / SS_tot)
-
-			// Mean of actual values
+			// Return R² score (coefficient of determination): R² = 1 - (SS_res / SS_tot)
 			float y_mean = y_test_matrix.mean();
 			float ss_tot = (y_test_matrix.array() - y_mean).square().sum();
 			float ss_res = (y_test_matrix - predictions).array().square().sum();
 
-			// R� score
-			float r2 = 1.0f - (ss_res / ss_tot);
+			// Avoid potential division by zero if targets are completely uniform
+			if (ss_tot == 0.0f) return 0.0f;
 
-			return r2;  // Returns value typically between -inf and 1.0
-			// 1.0 = perfect, 0.0 = baseline, <0 = worse than baseline
+			float r2 = 1.0f - (ss_res / ss_tot);
+			return r2;  
 		}
 
 		// Unknown loss type

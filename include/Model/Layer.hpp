@@ -26,12 +26,12 @@ public:
 	Activation::ActivationType functionType;                                                      // Type of activation function used in the layer
 
 public:
-    Layer() {}                                                                              // default constructor shouldn't be used for general usage
+    Layer() {}                                                                                    // default constructor shouldn't be used for general usage
     Layer(int num_neurons, int num_inputs_per_neuron, Activation::ActivationType& function) { 
 		weights = Eigen::MatrixX<float>(num_neurons, num_inputs_per_neuron);                      // num_neurons x num_inputs_per_neuron
-		biases = Eigen::VectorX<float>(num_neurons);                                        // num_neurons x 1
+		biases = Eigen::VectorX<float>(num_neurons);                                              // num_neurons x 1
 
-		this->functionType = function;                                                      // Need to store this here so that we can serialize the layer later
+		this->functionType = function;                                                            // Need to store this here so that we can serialize the layer later
         
         Init::InitWeightsAndBias(weights, biases, Init::setupType(function));
     }
@@ -62,11 +62,12 @@ public:
         int idx,
         float lambda,
         Regularization reg_type
-    ) {
-		this->new_errors_buffer.setZero(this->last_batched_input.rows(), this->last_batched_input.cols());
-        
+    ) { 
         // Calculate deltas for each neuron (element-wise multiplication of errors and derivative of activation function) (not same as Matrix multiplication)
-		int batch_size = static_cast<int>(this->last_batched_input.cols());                   // Number of samples in the batch
+		int batch_size = static_cast<int>(this->last_batched_input.cols());                                // Number of samples in the batch
+        
+        if (this->new_errors_buffer.cols() != batch_size) { this->new_errors_buffer.setZero(this->last_batched_input.rows(), batch_size); } 
+        else                                              { this->new_errors_buffer.setConstant(0.0f); }
         
         // Softmax derivative is handled differently (prediction - labels)
         if (this->functionType == Activation::ActivationType::Softmax && lossType == Loss::Type::CategoricalCrossEntropy) { this->deltas_buffer.noalias() = errors; } 
