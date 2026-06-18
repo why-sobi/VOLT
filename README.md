@@ -80,7 +80,7 @@ int main() {
     // 1. Load and Prepare Data
     auto [X, y] = DataUtility::readCSV<float>("mnist.csv", { "label" });
     y = DataUtility::one_hot_encode(y);
-    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.1666f); // 60k/10k Split
+    auto [X_train, y_train, X_test, y_test] = DataUtility::train_test_split(X, y, 0.3f); // 30% test
 
     // 2. Define Architecture
     MultiLayerPerceptron model(
