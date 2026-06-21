@@ -121,4 +121,4 @@ int main() {
 
 ## Note
 
-This repository is designed for high-performance systems research and understanding the foundations of structural neural network execution. Direct modification and profiling of the execution kernels are encouraged.
+This repository is designed for high-performance systems research and understanding the foundations of structural neural network execution and for learning ONLY. Direct modification and profiling of the execution kernels are encouraged.
